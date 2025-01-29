@@ -1,270 +1,105 @@
 /* eslint-disable @next/next/no-img-element */
 import React from "react";
 
-const features = [
+const studies = [
   {
-    title: "Collect user feedback",
+    title: "Best Practices for Mental Training",
     description:
-      "Use your Insighto's board to let users submit features they want.",
-    styles: "bg-primary text-primary-content",
-    demo: (
-      <div className="overflow-hidden h-full flex items-stretch">
-        <div className="w-full translate-x-12 bg-base-200 rounded-t-box h-full p-6">
-          <p className="font-medium uppercase tracking-wide text-base-content/60 text-sm mb-3">
-            Suggest a feature
-          </p>
-          <div
-            className="relative textarea py-4 h-full mr-12 bg-base-200 group-hover:bg-base-100 group-hover:border-base-content/10 text-base-content"
-            placeholder="Feature on/off option for different pages"
-          >
-            <div className="absolute left-4 top-4 group-hover:hidden flex items-center ">
-              <span>Notifica</span>
-              <span className="w-[2px] h-6 bg-primary animate-pulse"></span>
-            </div>
-            <div className="opacity-0 group-hover:opacity-100 duration-500">
-              Notifications should be visible only on certain pages.
-            </div>
-            <div className="opacity-0 group-hover:opacity-100 duration-1000 flex items-center gap-0.5">
-              <span>Terms & privacy pages don&apos;t need them</span>
-              <span className="w-[2px] h-6 bg-primary animate-pulse"></span>
-            </div>
-            <button className="btn shadow-lg btn-primary absolute right-4 bottom-6 opacity-0 group-hover:opacity-100 duration-1000">
-              Submit
-            </button>
-          </div>
-        </div>
-      </div>
-    ),
+      "Systematic review shows optimal results come from <strong>17 minutes per sessions, 3 times per week</strong>. Even <strong>5 minutes daily</strong> can be effective when practice includes physical, environmental, and emotional elements.",
+    citation: "Schuster et al., 2011",
+    link: "https://bmcmedicine.biomedcentral.com/articles/10.1186/1741-7015-9-75",
+    styles: "bg-base-200",
   },
   {
-    title: "Prioritize features",
-    description: "Users upvote features they want. You know what to ship next.",
-    styles: "md:col-span-2 bg-base-300 text-base-content",
-    demo: (
-      <div className="px-6 max-w-[600px] flex flex-col gap-4 overflow-hidden">
-        {[
-          {
-            text: "Add LemonSqueezy integration to the boilerplate",
-            secondaryText: "Yes, ship this! ✅",
-            votes: 48,
-            transition: "group-hover:-mt-36 group-hover:md:-mt-28 duration-500",
-          },
-          {
-            text: "A new pricing table for metered billing",
-            secondaryText: "Maybe ship this 🤔",
-            votes: 12,
-          },
-          {
-            text: "A new UI library for the dashboard",
-            secondaryText: "But don't ship that ❌",
-            votes: 1,
-          },
-        ].map((feature, i) => (
-          <div
-            className={`p-4 bg-base-100 text-base-content rounded-box flex justify-between mb-2 gap-4 ${feature?.transition}`}
-            key={i}
-          >
-            <div>
-              <p className="font-semibold mb-1">{feature.text}</p>
-              <p className="text-base-content-secondary">
-                {feature.secondaryText}
-              </p>
-            </div>
-            <button
-              className={`px-4 py-2 rounded-box group text-center text-lg duration-150 border border-transparent bg-primary text-primary-content`}
-            >
-              <svg
-                xmlns="http://www.w3.org/2000/svg"
-                width="24"
-                height="24"
-                viewBox="0 0 24 24"
-                fill="none"
-                stroke="currentColor"
-                strokeWidth="2.5"
-                strokeLinecap="round"
-                strokeLinejoin="round"
-                className={`w-5 h-5 ease-in-out duration-150 -translate-y-0.5 group-hover:translate-y-0`}
-              >
-                <path d="m18 15-6-6-6 6" />
-              </svg>
-              {feature.votes}
-            </button>
-          </div>
-        ))}
-      </div>
-    ),
+    title: "Mental Imagery Modifies Mood & Cognition",
+    description: 
+      "Research shows positive mental imagery generation <strong>alters mood and cognitive processing</strong> in adolescents, with effects enhanced by first-person perspective visualization.",
+    citation: "Burnett Heyes et al., 2016",
+    link: "https://www.ncbi.nlm.nih.gov/pmc/articles/PMC5306169/",
+    styles: "bg-base-200",
   },
   {
-    title: "Your brand, your board",
-    description: "Customize your Insighto board with 7 themes.",
-    styles: "md:col-span-2 bg-base-100 text-base-content",
-    demo: (
-      <div className="flex left-0 w-full h-full pt-0 lg:pt-8 overflow-hidden -mt-4">
-        <div className="-rotate-[8deg] flex min-w-max overflow-x-visible h-full lg:pt-4">
-          {[
-            {
-              buttonStyles: "bg-primary text-primary-content",
-              css: "-ml-1 rotate-[6deg] w-72 h-72 z-30 bg-base-200 text-base-content rounded-2xl group-hover:-ml-64 group-hover:opacity-0 group-hover:scale-75 transition-all duration-500 p-4",
-            },
-            {
-              buttonStyles: "bg-secondary text-secondary-content",
-              css: "rotate-[6deg] bg-base-200 text-base-content w-72 h-72 -mr-20 -ml-20 z-20 rounded-xl p-4",
-            },
-            {
-              buttonStyles: "bg-accent text-accent-content",
-              css: "rotate-[6deg] bg-base-200 text-base-content z-10 w-72 h-72 rounded-xl p-4",
-            },
-            {
-              buttonStyles: "bg-neutral text-neutral-content",
-              css: "rotate-[6deg] bg-base-200 text-base-content w-72 h-72 -ml-20 rounded-xl p-4",
-            },
-            {
-              buttonStyles: "bg-base-100 text-base-content",
-              css: "rotate-[6deg] bg-base-200 text-base-content w-72 h-72 -ml-10 -z-10 rounded-xl p-4 opacity-0 scale-75 group-hover:opacity-100 group-hover:scale-100 transition-all duration-300",
-            },
-          ].map((theme, i) => (
-            <div className={theme.css} key={i}>
-              <div className="font-medium uppercase tracking-wide text-base-content/60 text-sm mb-3">
-                Trending feedback
-              </div>
-              <div className="space-y-2">
-                <div className="p-4 bg-base-100 rounded-box flex justify-between">
-                  <div>
-                    <p className="font-semibold mb-1">Clickable cards</p>
-                    <p className="opacity-80">Make cards more accessible</p>
-                  </div>
-                  <button
-                    className={`px-4 py-2 rounded-box group text-center text-lg duration-150 border border-transparent ${theme.buttonStyles}`}
-                  >
-                    <svg
-                      xmlns="http://www.w3.org/2000/svg"
-                      width="24"
-                      height="24"
-                      viewBox="0 0 24 24"
-                      fill="none"
-                      stroke="currentColor"
-                      strokeWidth="2.5"
-                      strokeLinecap="round"
-                      strokeLinejoin="round"
-                      className={`w-5 h-5 ease-in-out duration-150 -translate-y-0.5 group-hover:translate-y-0`}
-                    >
-                      <path d="m18 15-6-6-6 6" />
-                    </svg>
-                    8
-                  </button>
-                </div>
-                <div className="p-4 bg-base-100 rounded-box flex justify-between ">
-                  <div>
-                    <p className="font-semibold mb-1">Bigger images</p>
-                    <p className="opacity-80">Make cards more accessible</p>
-                  </div>
-                  <button
-                    className={`px-4 py-2 rounded-box group text-center text-lg duration-150 border border-transparent ${theme.buttonStyles}`}
-                  >
-                    <svg
-                      xmlns="http://www.w3.org/2000/svg"
-                      width="24"
-                      height="24"
-                      viewBox="0 0 24 24"
-                      fill="none"
-                      stroke="currentColor"
-                      strokeWidth="2.5"
-                      strokeLinecap="round"
-                      strokeLinejoin="round"
-                      className={`w-5 h-5 ease-in-out duration-150 -translate-y-0.5 group-hover:translate-y-0`}
-                    >
-                      <path d="m18 15-6-6-6 6" />
-                    </svg>
-                    5
-                  </button>
-                </div>
-              </div>
-            </div>
-          ))}
-        </div>
-      </div>
-    ),
+    title: "Visualization Enhances Athletic Performance",
+    description:
+      "<strong>Elite athletes</strong> across multiple sports use visualization to improve <strong>motor skills, increase strength, boost confidence, enhance attention, and reduce anxiety</strong>. Mental rehearsal fires the same neurons as physical practice.",
+    citation: "Predoiu et al., 2020",
+    link: "https://discobolulunefs.ro/media/September2020.4.pdf",
+    styles: "bg-base-200", 
   },
   {
-    title: "Discover new ideas",
-    description: "Users can chat and discuss features.",
-    styles: "bg-neutral text-neutral-content",
-    demo: (
-      <div className="text-neutral-content px-6 space-y-4">
-        {[
-          {
-            id: 1,
-            text: "Can we have a feature to add a custom domain to IndiePage?",
-            userImg:
-              "https://pbs.twimg.com/profile_images/1514863683574599681/9k7PqDTA_400x400.jpg",
-            userName: "Marc Lou",
-            createdAt: "2024-09-01T00:00:00Z",
-          },
-          {
-            id: 2,
-            text: "I'd definitelly pay for that 🤩",
-            userImg:
-              "https://pbs.twimg.com/profile_images/1778434561556320256/knBJT1OR_400x400.jpg",
-            userName: "Dan K.",
-            createdAt: "2024-09-02T00:00:00Z",
-            transition:
-              "opacity-0 group-hover:opacity-100 duration-500 translate-x-1/4 group-hover:translate-x-0",
-          },
-        ]?.map((reply) => (
-          <div
-            key={reply.id}
-            className={`px-6 py-4 bg-neutral-content text-neutral rounded-box ${reply?.transition}`}
-          >
-            <div className="mb-2 whitespace-pre-wrap">{reply.text}</div>
-            <div className="text-neutral/80 flex items-center gap-2 text-sm">
-              <div className="flex items-center gap-2">
-                <div className="avatar">
-                  <div className="w-7 rounded-full">
-                    <img src={reply.userImg} alt={reply.userName} />
-                  </div>
-                </div>
-                <div className=""> {reply.userName} </div>
-              </div>
-              •
-              <div>
-                {new Date(reply.createdAt).toLocaleDateString("en-US", {
-                  month: "short",
-                  day: "numeric",
-                  year: "numeric",
-                })}
-              </div>
-            </div>
-          </div>
-        ))}
-      </div>
-    ),
+    title: "Imagination Reduces Threat Response",
+    description:
+      "Imagined exposure to threatening stimuli is <strong>as effective as real exposure</strong> in reducing threat-related neural patterns and physiological responses, engaging the brain's ventromedial prefrontal cortex.",
+    citation: "Reddan et al., 2018",
+    link: "https://www.cell.com/neuron/fulltext/S0896-6273(18)30955-3",
+    styles: "bg-base-200",
   },
+  {
+    title: "Memory Powers Future Imagination",
+    description:
+      "Research reveals <strong>striking similarities</strong> between remembering the past and imagining the future. A common brain network underlies both processes, allowing us to use memories adaptively to simulate future scenarios.",
+    citation: "Schacter et al., 2012",
+    link: "https://www.ncbi.nlm.nih.gov/pmc/articles/PMC3815616/",
+    styles: "bg-base-200",
+  },
+  {
+    title: "First-Person Visualization Boosts Health Intentions",
+    description:
+      "Research shows visualization combined with health information leads to <strong>significantly stronger intentions to adopt healthy behaviors</strong>. First-person perspective visualization was found to be <strong>more effective than third-person</strong>, increasing both self-efficacy and action planning.",
+    citation: "Rennie et al., 2014",
+    link: "https://pubmed.ncbi.nlm.nih.gov/24124985/",
+    styles: "bg-base-200",
+  },
+  {
+    title: "Sleep Enhances Visualization Learning",
+    description:
+      "Studies reveal that <strong>sleep plays a crucial role</strong> in strengthening visualization practice. A night of sleep after visualization training leads to <strong>significant performance improvements</strong>, with continued benefits across multiple nights.",
+    citation: "Walker et al., 2003",
+    link: "https://pmc.ncbi.nlm.nih.gov/articles/PMC202318/",
+    styles: "bg-base-200",
+  }
 ];
+
 const FeaturesGrid = () => {
   return (
-    <section className="flex justify-center items-center w-full bg-base-200/50 text-base-content py-20 lg:py-32">
-      <div className="flex flex-col max-w-[82rem] gap-16 md:gap-20 px-4">
-        <h2 className="max-w-3xl font-black text-4xl md:text-6xl tracking-[-0.01em]">
-          Ship features <br /> users{" "}
+    <section className="py-20 bg-base-100" id="backed-by-neuroscience">
+      <div className="flex flex-col max-w-[82rem] gap-16 md:gap-20 px-4 mx-auto">
+        <h2 className="max-w-3xl font-black text-4xl md:text-6xl tracking-[-0.01em] text-base-content">
+          Visualization is backed <br /> by {" "}
           <span className="underline decoration-dashed underline-offset-8 decoration-base-300">
-            really want
+            neuroscience
           </span>
         </h2>
         <div className="flex flex-col w-full h-fit gap-4 lg:gap-10 text-text-default max-w-[82rem]">
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-4 lg:gap-10">
-            {features.map((feature) => (
-              <div
-                key={feature.title}
-                className={`${feature.styles} rounded-3xl flex flex-col gap-6 w-full h-[22rem] lg:h-[25rem] pt-6 overflow-hidden group`}
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4 lg:gap-10">
+            {studies.map((study) => (
+              <a
+                href={study.link}
+                target="_blank"
+                rel="noopener noreferrer" 
+                key={study.title}
+                className={`
+                  ${study.styles} 
+                  rounded-3xl flex flex-col gap-6 w-full h-fit p-6 
+                  hover:bg-base-300 transition-all duration-300
+                  group border border-base-300
+                `}
               >
-                <div className="px-6 space-y-2">
-                  <h3 className="font-bold text-xl lg:text-3xl tracking-tight">
-                    {feature.title}
+                <div className="space-y-4">
+                  <h3 className="font-bold text-xl lg:text-2xl tracking-tight text-base-content">
+                    {study.title}
                   </h3>
-                  <p className="opacity-80">{feature.description}</p>
+                  <p 
+                    className="text-sm lg:text-base text-base-content/50 group-hover:text-base-content/90 transition-opacity duration-300"
+                    dangerouslySetInnerHTML={{ 
+                      __html: study.description 
+                    }}
+                  />
+                  <p className="text-sm text-base-content/40 pt-2 group-hover:text-base-content/70 transition-opacity duration-300">
+                    {study.citation}
+                  </p>
                 </div>
-                {feature.demo}
-              </div>
+              </a>
             ))}
           </div>
         </div>

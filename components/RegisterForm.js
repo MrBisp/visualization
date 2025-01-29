@@ -5,8 +5,9 @@ import { signIn } from "next-auth/react";
 import { toast } from "react-hot-toast";
 import apiClient from "@/libs/api";
 
-const RegisterForm = () => {
+const RegisterForm = ({ shouldRedirect = true }) => {
     const [isLoading, setIsLoading] = useState(false);
+    const [isSuccess, setIsSuccess] = useState(false);
     const [formData, setFormData] = useState({
         email: "",
         password: "",
@@ -33,15 +34,37 @@ const RegisterForm = () => {
             }
 
             toast.success("Registration successful!");
-
-            // Redirect to dashboard
-            window.location.href = "/dashboard";
+            
+            if (shouldRedirect) {
+                // Redirect to dashboard
+                window.location.href = "/dashboard";
+            } else {
+                setIsSuccess(true);
+                // Reset form
+                setFormData({
+                    email: "",
+                    password: "",
+                    name: "",
+                });
+            }
         } catch (error) {
             toast.error(error.message);
         } finally {
             setIsLoading(false);
         }
     };
+
+    if (isSuccess && !shouldRedirect) {
+        return (
+            <div className="text-center p-6 bg-success/10 rounded-lg">
+                <svg xmlns="http://www.w3.org/2000/svg" className="h-12 w-12 mx-auto text-success mb-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
+                </svg>
+                <h3 className="text-lg font-semibold text-success mb-2">Account Created Successfully!</h3>
+                <p className="text-gray-600">You can now use your account to save and access your visualizations.</p>
+            </div>
+        );
+    }
 
     return (
         <form onSubmit={handleSubmit} className="space-y-4">
@@ -95,7 +118,7 @@ const RegisterForm = () => {
                 )}
             </button>
 
-            <div className="divider">OR</div>
+            {/*<div className="divider">OR</div>
 
             <button
                 type="button"
@@ -103,7 +126,7 @@ const RegisterForm = () => {
                 onClick={() => signIn("google")}
             >
                 Continue with Google
-            </button>
+            </button>*/}
         </form>
     );
 };

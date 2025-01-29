@@ -7,6 +7,16 @@ module.exports = {
   ],
   theme: {
     extend: {
+      colors: {
+        primary: {
+          DEFAULT: '#FF5733', // Your primary color
+          focus: '#E64A2E',   // Darker shade for focus/hover
+        },
+        secondary: {
+          DEFAULT: '#3366FF', // Your secondary color
+          focus: '#2952CC',   // Darker shade for focus/hover
+        },
+      },
       backgroundImage: {
         gradient:
           "linear-gradient(60deg, #f79533, #f37055, #ef4e7b, #a166ab, #5073b8, #1098ad, #07b39b, #6fba82)",
@@ -59,10 +69,40 @@ module.exports = {
   },
   plugins: [require("daisyui")],
   daisyui: {
-    // Light & dark themes are added by default (it switches automatically based on OS settings)
-    // You can add another theme among the list of 30+
-    // Add "data-theme='theme_name" to any HTML tag to enable the 'theme_name' theme.
-    // https://daisyui.com/
-    themes: ["light", "dark"],
+    themes: [
+      {
+        light: {
+          // Base colors
+          "primary": "#118ab2",
+          "primary-focus": "#4023047",      // darker shade for hover/focus
+          "primary-content": "#ffffff",     // text/content color
+          
+          "secondary": "#ef476f",
+          "secondary-focus": "#ffd166",
+          "secondary-content": "#ffffff",
+          
+          "accent": "#37CDBE",
+          "accent-focus": "#2AA79B",
+          "accent-content": "#ffffff",
+          
+          // Background colors
+          "base-100": "#ffffff",           // main background
+          "base-200": "#F2F2F2",           // slightly darker
+          "base-300": "#E5E6E6",           // even darker
+          "base-content": "#1F2937",       // main text color
+          
+          // State colors
+          "info": "#3ABFF8",
+          "success": "#36D399",
+          "warning": "#FBBD23",
+          "error": "#F87272",
+          
+          // Other
+          "neutral": "#3D4451",            // neutral color
+          "neutral-focus": "#303640",
+          "neutral-content": "#ffffff",
+        }
+      }
+    ]
   },
 };

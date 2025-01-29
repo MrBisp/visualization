@@ -1,0 +1,64 @@
+NOTICE! THIS IS JUST A COPY OF THE TABLES FROM THE DATABASE. MODIFYING THIS FILE WILL NOT UPDATE THE DATABASE. 
+ALSO, WHEN UPDATING THE FILE, PLEASE MAKE SURE TO NOT DROP ANY TABLES. ONLY UPDATE THEM!!!!
+
+-- Enable UUID extension if not already enabled
+CREATE EXTENSION IF NOT EXISTS "uuid-ossp";
+
+-- Create users table
+CREATE TABLE public.users (
+  id uuid DEFAULT uuid_generate_v4() PRIMARY KEY,
+  email text NOT NULL UNIQUE,
+  password text,
+  name text,
+  google_id text,
+  image text,
+  created_at timestamp with time zone DEFAULT timezone('utc'::text, now()) NOT NULL,
+  updated_at timestamp with time zone DEFAULT timezone('utc'::text, now()) NOT NULL,
+  customer_id text,
+  price_id text,
+  has_access boolean DEFAULT false
+);
+
+-- Now create tables
+create table visualizations (
+  id uuid default uuid_generate_v4() primary key,
+  user_id uuid references auth.users(id) null,
+  created_at timestamp with time zone default timezone('utc'::text, now()) not null,
+  updated_at timestamp with time zone default timezone('utc'::text, now()) not null,
+  title text,
+  description text,
+  status text default 'pending' check (status in ('pending', 'processing', 'completed', 'failed')),
+  selected_voice text not null
+);
+
+create table visualization_sections (
+  id uuid default uuid_generate_v4() primary key,
+  visualization_id uuid references visualizations(id) on delete cascade,
+  section_type text not null check (section_type in ('introduction', 'scene_setup', 'emotional_priming', 'action_execution', 'reflection')),
+  content text,
+  created_at timestamp with time zone default timezone('utc'::text, now()) not null,
+  sequence_order integer not null,
+  status text default 'pending' check (status in ('pending', 'processing', 'completed', 'failed'))
+);
+
+create table visualization_audio (
+  id uuid default uuid_generate_v4() primary key,
+  visualization_id uuid references visualizations(id) on delete cascade,
+  audio_url text,
+  duration integer,
+  created_at timestamp with time zone default timezone('utc'::text, now()) not null
+);
+
+-- Create updated_at trigger
+create or replace function update_updated_at_column()
+returns trigger as $$
+begin
+    new.updated_at = now();
+    return new;
+end;
+$$ language plpgsql;
+
+create trigger update_visualizations_updated_at
+    before update on visualizations
+    for each row
+    execute function update_updated_at_column();

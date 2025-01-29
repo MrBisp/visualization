@@ -1,14 +1,18 @@
 'use client';
-import LoginModal from "@/components/LoginModal";
 import { useSession } from "next-auth/react";
-
+import Hero from "@/components/Hero";
+import Header from "@/components/Header";
+import FeaturesAccordion from "@/components/FeaturesAccordion";
+import FeaturesGrid from "@/components/FeaturesGrid";
 export default function Page() {
   const { status } = useSession();
 
   return (
     <div className="h-screen w-full">
-      {status === 'unauthenticated' && <LoginModal isAutoOpen={true} />}
-      <h1>Hello</h1>
+      <Header />
+      <Hero />
+      <FeaturesAccordion />
+      <FeaturesGrid />
     </div>
   );
 }

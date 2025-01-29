@@ -33,6 +33,7 @@
     "next-sitemap": "^4.2.3",
     "nextjs-toploader": "^1.6.11",
     "nodemailer": "^6.9.13",
+    "openai": "^4.80.1",
     "react": "18.2.0",
     "react-confetti": "^6.1.0",
     "react-confetti-explosion": "^2.1.2",
