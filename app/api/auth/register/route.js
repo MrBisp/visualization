@@ -1,72 +1,94 @@
 import { NextResponse } from "next/server";
-import { supabase } from "@/libs/supabase";
+import { createClient } from "@supabase/supabase-js";
 import bcrypt from "bcryptjs";
 
-export async function POST(req) {
-    try {
-        const { email, password, name, inviteCode } = await req.json();
+const supabase = createClient(
+    process.env.NEXT_PUBLIC_SUPABASE_URL,
+    process.env.SUPABASE_SERVICE_ROLE_KEY
+);
 
-        if (!email || !password) {
+export async function POST(request) {
+    try {
+        const body = await request.json();
+        const { email, name, password } = body;
+
+        if (!email || !name || !password) {
             return NextResponse.json(
-                { error: "Email and password are required" },
+                { error: "Missing required fields" },
                 { status: 400 }
             );
         }
 
-        // Hash the password
+        // Check if user already exists in auth.users
+        const { data: existingAuthUser, error: authCheckError } = await supabase
+            .from('auth.users')
+            .select('id')
+            .eq('email', email)
+            .single();
+
+        if (existingAuthUser) {
+            return NextResponse.json(
+                { error: "User already exists" },
+                { status: 400 }
+            );
+        }
+
+        // Hash password
         const hashedPassword = await bcrypt.hash(password, 10);
 
-        // Create user with all required fields
+        // First create the user in auth.users
+        const { data: authUser, error: authError } = await supabase.auth.admin.createUser({
+            email,
+            password: password,
+            email_confirm: true,
+            user_metadata: {
+                name
+            }
+        });
+
+        if (authError) {
+            console.error('Error creating auth user:', authError);
+            return NextResponse.json(
+                { error: "Failed to create user" },
+                { status: 500 }
+            );
+        }
+
+        // Then create the user in public.users with the same ID
         const { data: user, error: userError } = await supabase
             .from('users')
-            .insert({
-                email,
-                password: hashedPassword,
-                name,
-                created_at: new Date().toISOString(),
-                updated_at: new Date().toISOString()
-            })
+            .insert([
+                {
+                    id: authUser.user.id,
+                    email,
+                    name,
+                    password: hashedPassword
+                }
+            ])
             .select()
             .single();
 
-        if (userError) throw userError;
-
-        // If there's an invite code, handle the follow relationship
-        if (inviteCode) {
-            const { data: invite } = await supabase
-                .from('invites')
-                .select('inviter_id')
-                .eq('code', inviteCode)
-                .eq('used', false)
-                .gt('expires_at', new Date().toISOString())
-                .single();
-
-            if (invite) {
-                // Create mutual follow relationship
-                await supabase.from('follows').insert([
-                    { follower_id: invite.inviter_id, following_id: user.id },
-                    { follower_id: user.id, following_id: invite.inviter_id }
-                ]);
-
-                // Mark invite as used
-                await supabase
-                    .from('invites')
-                    .update({ used: true, used_by: user.id })
-                    .eq('code', inviteCode);
-            }
+        if (userError) {
+            console.error('Error creating user record:', userError);
+            // Try to clean up the auth user if public user creation fails
+            await supabase.auth.admin.deleteUser(authUser.user.id);
+            return NextResponse.json(
+                { error: "Failed to create user" },
+                { status: 500 }
+            );
         }
 
         return NextResponse.json({
             user: {
                 id: user.id,
-                email: user.email,
                 name: user.name,
-            },
+                email: user.email
+            }
         });
     } catch (error) {
-        console.error(error);
+        console.error('Registration error:', error);
         return NextResponse.json(
-            { error: error.message || "Something went wrong" },
+            { error: "Internal server error" },
             { status: 500 }
         );
     }

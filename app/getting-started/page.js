@@ -4,6 +4,7 @@ import { getVoicesList, getOpenAIVoiceId } from '../constants/voices';
 import { useRouter } from 'next/navigation';
 import { initializeVisualization, generateSection, SECTION_TYPES } from '../services/visualizationService';
 import { updateVisualizationStatus } from '../services/visualizationService';
+import { useSession } from 'next-auth/react';
 
 const GettingStarted = () => {
     const router = useRouter();
@@ -12,12 +13,13 @@ const GettingStarted = () => {
     const [selectedVoice, setSelectedVoice] = useState('emma');
     const [generationStep, setGenerationStep] = useState(0);
     const [generationId, setGenerationId] = useState(null);
+    const [environmentText, setEnvironmentText] = useState('');
+    const { data: session, update: updateSession } = useSession();
 
     const preSelects = [
         {
             title: "Job Interview",
             description: "I want to visualize myself feeling calm, confident, and articulate during my job interview.\n" +
-                         "The interview takes place in a modern corporate office in the city center, with large glass windows overlooking the skyline.\n" +
                          "I am dressed professionally in a well-fitted suit, feeling composed and prepared.\n" +
                          "I will be speaking with the HR manager and a senior team member.\n" +
                          "We will be discussing my qualifications for the role of {FILL IN ROLE}.\n" +
@@ -26,7 +28,6 @@ const GettingStarted = () => {
         {
             title: "Exam",
             description: "I want to visualize myself feeling calm, focused, and confident during my exam.\n" +
-                         "The exam takes place in a quiet university lecture hall, filled with students, with large wooden desks and bright lighting.\n" +
                          "I am sitting upright, taking deep breaths, and feeling fully prepared.\n" +
                          "The questions come easily to me, and I recall information effortlessly.\n" +
                          "I know I might feel anxious, so I want to visualize myself staying relaxed, writing smoothly, and managing my time well."
@@ -34,7 +35,6 @@ const GettingStarted = () => {
         {
             title: "Public Speaking",
             description: "I want to visualize myself feeling calm, charismatic, and engaging during my public speaking event.\n" +
-                         "I am standing on a well-lit stage in a large conference hall, facing an attentive audience.\n" +
                          "I am wearing a stylish, professional outfit that makes me feel confident.\n" +
                          "The audience is engaged, nodding along as I speak clearly and passionately.\n" +
                          "I know I might feel nervous, so I want to visualize myself speaking naturally, making eye contact, and feeling fully in my element."
@@ -42,7 +42,6 @@ const GettingStarted = () => {
         {
             title: "Athletic Performance",
             description: "I want to visualize myself feeling strong, composed, and in peak condition during my athletic performance.\n" +
-                         "I am in a massive stadium, the crowd buzzing with energy, the cool air brushing against my skin.\n" +
                          "I am dressed in my competition gear, standing tall with a focused expression.\n" +
                          "I move with precision and power, my body responding effortlessly.\n" +
                          "I know I might feel pressure, so I want to visualize myself staying confident, executing my performance flawlessly, and feeling the thrill of success."
@@ -50,7 +49,6 @@ const GettingStarted = () => {
         {
             title: "Presentation",
             description: "I want to visualize myself feeling calm, persuasive, and well-prepared during my presentation.\n" +
-                         "I am in a modern conference room, standing in front of a screen displaying my slides.\n" +
                          "I am dressed in business casual, with a confident posture and a composed smile.\n" +
                          "The audience listens intently, nodding as I make my key points.\n" +
                          "I know I might feel pressure, so I want to visualize myself delivering my message smoothly, responding to questions with ease, and receiving positive feedback."
@@ -58,7 +56,6 @@ const GettingStarted = () => {
         {
             title: "Social Situation",
             description: "I want to visualize myself feeling at ease, charismatic, and confident in a social gathering.\n" +
-                         "The event is a lively networking party in a stylish venue with soft background music and groups engaged in conversation.\n" +
                          "I am dressed in a smart-casual outfit, holding a drink, making effortless small talk.\n" +
                          "People are interested in what I have to say, and I enjoy connecting with new people.\n" +
                          "I know I might feel shy or anxious, so I want to visualize myself feeling comfortable, smiling naturally, and making engaging conversation."
@@ -66,7 +63,6 @@ const GettingStarted = () => {
         {
             title: "Meeting",
             description: "I want to visualize myself feeling confident, respected, and articulate during an important meeting.\n" +
-                         "The meeting takes place in a sleek boardroom with a long glass table and colleagues seated attentively.\n" +
                          "I am dressed in business attire, sitting upright, speaking clearly and persuasively.\n" +
                          "I contribute valuable insights, listen actively, and engage in a productive discussion.\n" +
                          "I know I might feel uncertain, so I want to visualize myself being assertive, handling questions smoothly, and leaving a strong impression."
@@ -76,6 +72,10 @@ const GettingStarted = () => {
 
     const handlePreSelectClick = (description) => {
         setVisualizationText(description);
+    };
+
+    const handleEnvironmentSelect = (description) => {
+        setEnvironmentText(description);
     };
 
     const voices = getVoicesList();
@@ -127,6 +127,19 @@ const GettingStarted = () => {
                 voiceId: getOpenAIVoiceId(selectedVoice)
             });
 
+            console.log('Visualization created:', visualization.id);
+            
+            // Update session to ensure we have the latest data
+            await updateSession();
+            
+            // Wait a moment for the session to update
+            await new Promise(resolve => setTimeout(resolve, 500));
+            
+            // Get the latest session data
+            const currentSession = await fetch('/api/auth/session').then(res => res.json());
+            console.log('Current session after update:', currentSession);
+            console.log('User ID in session:', currentSession?.user?.id);
+
             // Save to localStorage before redirect
             localStorage.setItem('current_visualization', JSON.stringify({
                 id: visualization.id,
@@ -134,9 +147,37 @@ const GettingStarted = () => {
                 voice: selectedVoice,
                 created_at: new Date().toISOString()
             }));
-            
-            // Clear the progress data since we're starting fresh
-            //localStorage.removeItem('visualization_progress');
+
+            // If user is logged in, associate the visualization with their account
+            if (currentSession?.user?.id) {
+                console.log('Attempting to associate visualization with user ID:', currentSession.user.id);
+                try {
+                    const response = await fetch('/api/visualization/associate', {
+                        method: 'POST',
+                        headers: {
+                            'Content-Type': 'application/json',
+                        },
+                        body: JSON.stringify({
+                            visualizationId: visualization.id
+                        })
+                    });
+
+                    const responseData = await response.json();
+                    console.log('Association response:', responseData);
+
+                    if (!response.ok) {
+                        console.error('Association failed with status:', response.status);
+                        console.error('Error details:', responseData);
+                    } else {
+                        console.log('Successfully associated visualization');
+                    }
+                } catch (error) {
+                    console.error('Failed to associate visualization:', error);
+                    // Continue with redirect even if association fails
+                }
+            } else {
+                console.log('No user ID in session, skipping association. Session:', currentSession);
+            }
             
             // Redirect to generation page
             router.push(`/generation/${visualization.id}`);
@@ -178,7 +219,7 @@ const GettingStarted = () => {
     const renderStep1 = () => (
         <>
             <div className="flex items-center gap-2 self-start mb-2">
-                <span className="badge badge-primary py-4 px-4">Step 1/2</span>
+                <span className="badge badge-primary py-4 px-4">Step 1/3</span>
                 <span className="text-lg">Describe Your Visualization</span>
             </div>
 
@@ -223,13 +264,47 @@ const GettingStarted = () => {
     const renderStep2 = () => (
         <>
             <div className="flex items-center gap-2 self-start mb-2">
-                <span className="badge badge-primary py-4 px-4">Step 1/2</span>
-                <span className="text-lg">Choose Voice & Generate</span>
+                <span className="badge badge-primary py-4 px-4">Step 2/3</span>
+                <span className="text-lg">Describe Your Environment</span>
             </div>
 
             <button 
                 className="btn btn-ghost btn-sm self-start mb-2"
                 onClick={() => setStep(1)}
+            >
+                ← Back
+            </button>
+
+            <h2 className="font-bold text-3xl mb-4">Where Will You Practice This Visualization?</h2>
+            <p className="text-lg mb-4 max-w-2xl">
+                The environment where you practice your visualization can greatly impact its effectiveness. 
+                Describe where you'll be when listening to this visualization.
+            </p>
+            
+            <div className="w-full max-w-2xl mb-8">
+                <textarea 
+                    className="textarea textarea-bordered w-full"
+                    placeholder="Describe your environment..."
+                    value={environmentText}
+                    onChange={(e) => setEnvironmentText(e.target.value)}
+                    style={{ fontSize: '1.1rem', minHeight: '10rem' }}
+                />
+            </div>
+
+            <div className="h-24" />
+        </>
+    );
+
+    const renderStep3 = () => (
+        <>
+            <div className="flex items-center gap-2 self-start mb-2">
+                <span className="badge badge-primary py-4 px-4">Step 3/3</span>
+                <span className="text-lg">Choose Voice & Generate</span>
+            </div>
+
+            <button 
+                className="btn btn-ghost btn-sm self-start mb-2"
+                onClick={() => setStep(2)}
             >
                 ← Back
             </button>
@@ -290,6 +365,19 @@ const GettingStarted = () => {
                         >
                             Next
                         </button>
+                    ) : step === 2 ? (
+                        <button 
+                            className="btn btn-primary btn-wide"
+                            onClick={() => {
+                                // Only append environment text if it's not empty
+                                if (environmentText.trim()) {
+                                    setVisualizationText(visualizationText + "\n\nEnvironment for practice:\n" + environmentText);
+                                }
+                                setStep(3);
+                            }}
+                        >
+                            Next
+                        </button>
                     ) : (
                         renderGenerationButton()
                     )}
@@ -301,7 +389,7 @@ const GettingStarted = () => {
     return (
         <>
             <div className="max-w-7xl mx-auto bg-base-100 flex flex-col lg:flex-col items-center justify-center gap-4 lg:gap-6 px-8 pt-1 pb-8 lg:py-12">   
-                {step === 1 ? renderStep1() : renderStep2()}
+                {step === 1 ? renderStep1() : step === 2 ? renderStep2() : renderStep3()}
             </div>
             {renderBottomSection()}
         </>

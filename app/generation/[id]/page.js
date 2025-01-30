@@ -3,35 +3,108 @@
 import { useEffect, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { useSession } from "next-auth/react";
-import { 
-    SECTION_TYPES, 
-    getVisualizationProgress,
-    generateSection,
-    updateVisualizationStatus,
-    updateSectionStatus,
-    completeVisualization 
-} from '@/app/services/visualizationService';
+import { SECTION_TYPES } from '@/app/services/visualizationService';
+import { handleGeneration } from '@/components/GenerationService';
+import VisualizationProgress from '@/components/VisualizationProgress';
+import AudioSection from '@/components/AudioSection';
 import ButtonSignin from '@/components/ButtonSignin';
 import RegisterForm from '@/components/RegisterForm';
-import AudioPlayer from '@/components/AudioPlayer';
 
 export default function GenerationPage({ params }) {
     const router = useRouter();
     const { id } = params;
-    const { data: session } = useSession();
+    const { data: session, update: updateSession } = useSession();
+    const isDebugMode = id === 'debug';
 
-    const [isTesting, setIsTesting] = useState(true);
+    const [isTesting, setIsTesting] = useState(false);
+    const [noAudio, setNoAudio] = useState(true);
     
     const [visualization, setVisualization] = useState(null);
     const [currentSection, setCurrentSection] = useState(null);
     const [progress, setProgress] = useState({});
     const [error, setError] = useState(null);
+    const [loadingMessageIndex, setLoadingMessageIndex] = useState(0);
+    const [isGeneratingAudio, setIsGeneratingAudio] = useState(false);
+
+    // Section descriptions for the user
+    const sectionDescriptions = {
+        [SECTION_TYPES.INTRODUCTION]: {
+            pending: "Preparing to create your introduction...",
+            processing: [
+                "Crafting a calming opening sequence...",
+                "Adding gentle breathing cues...",
+                "Fine-tuning the relaxation guidance...",
+                "Polishing the mindset preparation..."
+            ]
+        },
+        [SECTION_TYPES.SCENE_SETUP]: {
+            pending: "Getting ready to build your scene...",
+            processing: [
+                "Designing the perfect environment...",
+                "Adding rich sensory details...",
+                "Painting the visual atmosphere...",
+                "Incorporating ambient sounds and textures..."
+            ]
+        },
+        [SECTION_TYPES.EMOTIONAL_PRIMING]: {
+            pending: "Preparing your emotional foundation...",
+            processing: [
+                "Creating confidence-building elements...",
+                "Weaving in positive affirmations...",
+                "Adding empowering moments...",
+                "Strengthening your emotional readiness..."
+            ]
+        },
+        [SECTION_TYPES.ACTION_EXECUTION]: {
+            pending: "Setting up your performance sequence...",
+            processing: [
+                "Choreographing your key actions...",
+                "Adding performance details...",
+                "Incorporating success moments...",
+                "Fine-tuning the execution flow..."
+            ]
+        },
+        [SECTION_TYPES.REFLECTION]: {
+            pending: "Preparing your reflection segment...",
+            processing: [
+                "Creating meaningful closing thoughts...",
+                "Adding success reinforcement...",
+                "Weaving in future applications...",
+                "Polishing the final experience..."
+            ]
+        }
+    };
 
     useEffect(() => {
         let mounted = true;
 
         const loadAndStart = async () => {
-            // Load visualization data from localStorage
+            if (isDebugMode) {
+                // In debug mode, create mock data
+                const mockVisualization = {
+                    id: 'debug',
+                    text: 'Debug visualization',
+                    selected_voice: 'alloy',
+                    sections: Object.values(SECTION_TYPES).map((type, index) => ({
+                        section_type: type,
+                        status: 'pending',
+                        sequence_order: index,
+                        content: `Mock content for ${type}`
+                    }))
+                };
+
+                if (mounted) {
+                    setVisualization(mockVisualization);
+                    setProgress(mockVisualization.sections.reduce((acc, section) => ({
+                        ...acc,
+                        [section.section_type]: section.status
+                    }), {}));
+                    await startGeneration();
+                }
+                return;
+            }
+
+            // Regular loading logic for non-debug mode
             const savedData = localStorage.getItem('current_visualization');
             if (!savedData) {
                 setError('No visualization data found');
@@ -45,19 +118,8 @@ export default function GenerationPage({ params }) {
                     return;
                 }
 
-                // Fetch sections data
-                const sections = await getVisualizationProgress(id);
-                const visualizationWithSections = {
-                    ...data,
-                    sections
-                };
-
                 if (mounted) {
-                    setVisualization(visualizationWithSections);
-                    setProgress(sections.reduce((acc, section) => ({
-                        ...acc,
-                        [section.section_type]: section.status
-                    }), {}));
+                    setVisualization(data);
                     await startGeneration();
                 }
             } catch (error) {
@@ -70,147 +132,86 @@ export default function GenerationPage({ params }) {
 
         loadAndStart();
 
-        // Cleanup function
         return () => {
             mounted = false;
         };
-    }, [id]); // Only depend on id
+    }, [id, isDebugMode]);
+
+    // Update loading message every 3 seconds
+    useEffect(() => {
+        if (!currentSection || !progress[currentSection] === 'processing') return;
+
+        const interval = setInterval(() => {
+            setLoadingMessageIndex(prev => 
+                (prev + 1) % sectionDescriptions[currentSection].processing.length
+            );
+        }, 3000);
+
+        return () => clearInterval(interval);
+    }, [currentSection, progress]);
+
+    const getCurrentMessage = () => {
+        if (!currentSection) return 'Getting everything ready...';
+        
+        if (isGeneratingAudio) {
+            return "Converting your visualization into audio...";
+        }
+        
+        const status = progress[currentSection];
+        if (status === 'processing') {
+            return sectionDescriptions[currentSection].processing[loadingMessageIndex];
+        } else if (status === 'pending') {
+            return sectionDescriptions[currentSection].pending;
+        } else if (status === 'completed') {
+            return `${currentSection.split('_').map(word => word.charAt(0).toUpperCase() + word.slice(1).toLowerCase()).join(' ')} completed!`;
+        }
+        return 'Processing...';
+    };
 
     const startGeneration = async () => {
-        console.log('Starting generation');
+        await handleGeneration({
+            id,
+            isDebugMode,
+            noAudio,
+            SECTION_TYPES,
+            setCurrentSection,
+            setProgress,
+            setVisualization,
+            setIsGeneratingAudio,
+            setError
+        });
+    };
+
+    // Handle successful registration
+    const handleRegistrationSuccess = async () => {
         try {
-            // Get initial progress
-            const sections = await getVisualizationProgress(id);
-            const currentProgress = sections.reduce((acc, section) => ({
-                ...acc,
-                [section.section_type]: section.status
-            }), {});
+            // Update the session first
+            await updateSession();
             
-            setProgress(currentProgress);
-            
-            // Update visualization with latest sections
-            setVisualization(prev => ({
-                ...prev,
-                sections
-            }));
+            // Wait a bit to ensure session is updated
+            await new Promise(resolve => setTimeout(resolve, 500));
 
-            console.log('Progress:', currentProgress);
+            // Make API call to associate visualization with user
+            const response = await fetch('/api/visualization/associate', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                },
+                body: JSON.stringify({
+                    visualizationId: id
+                }),
+            });
 
-            // Check for stale processing sections (older than 5 minutes)
-            const processingStartTime = localStorage.getItem(`processing_start_${id}`);
-            const hasStaleProcessing = processingStartTime && 
-                (Date.now() - parseInt(processingStartTime)) > 5 * 60 * 1000;
-
-            // If we find processing sections but no timestamp or stale timestamp,
-            // assume they're stale and need to be reprocessed
-            const hasProcessingSections = sections.some(section => section.status === 'processing');
-            if (hasProcessingSections && (!processingStartTime || hasStaleProcessing)) {
-                console.log('Found stale processing sections, will reprocess them');
-                // Reset processing sections to pending
-                for (const section of sections) {
-                    if (section.status === 'processing') {
-                        await updateSectionStatus(id, section.section_type, 'pending');
-                    }
-                }
-                // Refresh progress after reset
-                const updatedSections = await getVisualizationProgress(id);
-                setProgress(updatedSections.reduce((acc, section) => ({
-                    ...acc,
-                    [section.section_type]: section.status
-                }), {}));
-            } else if (hasProcessingSections) {
-                // If sections are still being processed in another tab/window
-                console.log('Sections are being processed in another session, polling for updates');
-                // Start polling for updates
-                const pollInterval = setInterval(async () => {
-                    const updatedSections = await getVisualizationProgress(id);
-                    setProgress(updatedSections.reduce((acc, section) => ({
-                        ...acc,
-                        [section.section_type]: section.status
-                    }), {}));
-                    setVisualization(prev => ({
-                        ...prev,
-                        sections: updatedSections
-                    }));
-                    
-                    // If no more processing sections, stop polling
-                    if (!updatedSections.some(section => section.status === 'processing')) {
-                        clearInterval(pollInterval);
-                        // Restart generation to handle any remaining sections
-                        startGeneration();
-                    }
-                }, 5000); // Poll every 5 seconds
-
-                // Cleanup interval on component unmount
-                return () => clearInterval(pollInterval);
-            }
-            
-            // Generate each section sequentially, skipping completed ones
-            for (const sectionType of Object.values(SECTION_TYPES)) {
-                try {
-                    // Skip if already completed
-                    if (currentProgress[sectionType] === 'completed') {
-                        console.log(`Section ${sectionType} already completed, skipping`);
-                        continue;
-                    }
-
-                    setCurrentSection(sectionType);
-                    // Set processing start time when we begin generating
-                    localStorage.setItem(`processing_start_${id}`, Date.now().toString());
-                    await generateSection(id, sectionType);
-                    console.log('Generated section:', sectionType);
-                    
-                    // Update progress and visualization after each section
-                    const updatedSections = await getVisualizationProgress(id);
-                    setProgress(updatedSections.reduce((acc, section) => ({
-                        ...acc,
-                        [section.section_type]: section.status
-                    }), {}));
-                    setVisualization(prev => ({
-                        ...prev,
-                        sections: updatedSections
-                    }));
-                } catch (sectionError) {
-                    console.error(`Failed to generate section ${sectionType}:`, sectionError);
-                    setProgress(prev => ({
-                        ...prev,
-                        [sectionType]: 'failed'
-                    }));
-                }
+            if (!response.ok) {
+                const data = await response.json();
+                throw new Error(data.error || 'Failed to associate visualization with user');
             }
 
-            // Clear processing timestamp when done
-            localStorage.removeItem(`processing_start_${id}`);
-
-            // Check if all sections are completed
-            const allSections = await getVisualizationProgress(id);
-            const allCompleted = allSections.every(section => section.status === 'completed');
-
-            if (allCompleted) {
-                try {
-                    // Complete the visualization using the service
-                    const completedVisualization = await completeVisualization(id);
-
-                    // Update the visualization state with audio data
-                    setVisualization(prev => ({
-                        ...prev,
-                        ...completedVisualization,
-                        audio_url: completedVisualization.visualization_audio?.[0]?.audio_url
-                    }));
-
-                    // Clear localStorage since we're done
-                    localStorage.removeItem('current_visualization');
-                } catch (error) {
-                    console.error('Completion error:', error);
-                    setError(`Failed to complete visualization: ${error.message}`);
-                }
-            }
-
+            // Refresh the router to update the UI
+            router.refresh();
         } catch (error) {
-            console.error('Generation failed:', error);
-            setError('Failed to generate visualization');
-            await updateVisualizationStatus(id, 'failed');
-            localStorage.removeItem(`processing_start_${id}`);
+            console.error('Error associating visualization:', error);
+            throw error;
         }
     };
 
@@ -231,97 +232,40 @@ export default function GenerationPage({ params }) {
         );
     }
 
-    const testContent = (
-        <>
-            {/* Progress Steps */}
-            <div className="space-y-4">
-                {Object.entries(SECTION_TYPES).map(([key, type]) => (
-                    <div 
-                        key={type}
-                        className={`p-4 rounded-lg border ${
-                            currentSection === type ? 'border-primary bg-primary/5' : 'border-gray-200'
-                        }`}
-                    >
-                        <div className="flex items-center justify-between">
-                            <h3 className="font-semibold">
-                                {key.charAt(0) + key.slice(1).toLowerCase().replace('_', ' ')}
-                            </h3>
-                            <Status status={progress[type]} />
-                        </div>
-                        {/* Add content display */}
-                        {progress[type] === 'completed' && (
-                            <div className="mt-4 p-4 bg-gray-50 rounded text-sm font-mono whitespace-pre-wrap">
-                                {visualization?.sections?.find(s => s.section_type === type)?.content || 'No content available'}
-                            </div>
-                        )}
-                    </div>
-                ))}
-            </div>
-
-            {/* Overall Progress */}
-            <div className="mt-8">
-                <div className="w-full bg-gray-200 rounded-full h-2">
-                    <div 
-                        className="bg-primary h-2 rounded-full transition-all duration-500"
-                        style={{ 
-                            width: `${
-                                (Object.values(progress).filter(s => s === 'completed').length / 
-                                Object.keys(SECTION_TYPES).length) * 100
-                            }%` 
-                        }}
-                    />
-                </div>
-            </div>
-
-            {/* Audio Player - Show when all sections are completed */}
-            {Object.values(progress).every(status => status === 'completed') && visualization?.audio_url && (
-                <div className="mt-8">
-                    <h2 className="text-xl font-semibold mb-4">Listen to Your Visualization</h2>
-                    <AudioPlayer audioUrl={visualization.audio_url} />
-                </div>
-            )}
-        </>
-    );
-
-
     return (
-        <div className="min-h-screen p-8">
+        <div className="min-h-screen p-8 bg-gray-50">
             <div className="max-w-3xl mx-auto">
-                <h1 className="text-3xl font-bold mb-8">Generating Your Visualization...</h1>
+                <h1 className="text-3xl font-bold mb-8">Generating Your Visualization</h1>
                 
-                {isTesting ? testContent : null}
+                <VisualizationProgress 
+                    currentSection={currentSection}
+                    progress={progress}
+                    isGeneratingAudio={isGeneratingAudio}
+                    getCurrentMessage={getCurrentMessage}
+                    SECTION_TYPES={SECTION_TYPES}
+                />
+
+                <AudioSection 
+                    visualization={visualization}
+                    progress={progress}
+                />
 
                 {!session && (
-                    <>
-                        <p>
-                            Generating your visualization usually takes 1-2 minutes. In the meantime, you can sign-up for a free account, to save your visualization so you always have it.
+                    <div className="mt-8 bg-white border p-6 rounded-lg">
+                        <p className="text-gray-600 mb-4">
+                            Generating your visualization usually takes 1-2 minutes. In the meantime, you can sign up for a free account to save your visualization and access it anytime.
                         </p>
 
-                        <div className="mt-8 flex flex-col items-center border p-4 rounded-lg">
+                        <div className="flex flex-col items-center">
                             <h3 className="text-xl font-bold mb-4">Sign up for free</h3>
-                            <RegisterForm shouldRedirect={false} />
+                            <RegisterForm 
+                                shouldRedirect={false} 
+                                onSuccess={handleRegistrationSuccess}
+                            />
                         </div>
-                    </>
+                    </div>
                 )}
             </div>
         </div>
     );
-}
-
-const Status = ({ status }) => {
-    switch (status) {
-        case 'completed':
-            return <span className="text-green-600">✓ Complete</span>;
-        case 'processing':
-            return (
-                <span className="text-primary">
-                    <span className="loading loading-spinner loading-sm mr-2" />
-                    Processing
-                </span>
-            );
-        case 'failed':
-            return <span className="text-red-600">Failed</span>;
-        default:
-            return <span className="text-gray-400">Pending</span>;
-    }
-}; 
+} 

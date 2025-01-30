@@ -4,8 +4,10 @@ import { useState } from "react";
 import { signIn } from "next-auth/react";
 import { toast } from "react-hot-toast";
 import apiClient from "@/libs/api";
+import { useRouter } from "next/navigation";
 
-const RegisterForm = ({ shouldRedirect = true }) => {
+export default function RegisterForm({ shouldRedirect = true, onSuccess }) {
+    const router = useRouter();
     const [isLoading, setIsLoading] = useState(false);
     const [isSuccess, setIsSuccess] = useState(false);
     const [formData, setFormData] = useState({
@@ -13,17 +15,33 @@ const RegisterForm = ({ shouldRedirect = true }) => {
         password: "",
         name: "",
     });
+    const [error, setError] = useState(null);
 
     const handleSubmit = async (e) => {
         e.preventDefault();
         setIsLoading(true);
+        setError(null);
 
         try {
             // Register the user
-            await apiClient.post("/auth/register", formData);
+            const registerResponse = await fetch('/api/auth/register', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                },
+                body: JSON.stringify(formData),
+            });
+
+            const registerData = await registerResponse.json();
+
+            if (!registerResponse.ok) {
+                throw new Error(registerData.error || 'Failed to register');
+            }
+
+            toast.success("Account created successfully!");
 
             // Sign in the user
-            const result = await signIn("credentials", {
+            const result = await signIn('credentials', {
                 email: formData.email,
                 password: formData.password,
                 redirect: false,
@@ -33,11 +51,20 @@ const RegisterForm = ({ shouldRedirect = true }) => {
                 throw new Error(result.error);
             }
 
-            toast.success("Registration successful!");
-            
+            // Call onSuccess if provided
+            if (onSuccess) {
+                try {
+                    await onSuccess();
+                    toast.success("Visualization saved to your account!");
+                } catch (err) {
+                    console.error('Error in onSuccess:', err);
+                    toast.error("Account created but failed to save visualization. Please try again later.");
+                }
+            }
+
+            // Redirect if needed
             if (shouldRedirect) {
-                // Redirect to dashboard
-                window.location.href = "/dashboard";
+                router.push('/dashboard');
             } else {
                 setIsSuccess(true);
                 // Reset form
@@ -47,8 +74,10 @@ const RegisterForm = ({ shouldRedirect = true }) => {
                     name: "",
                 });
             }
-        } catch (error) {
-            toast.error(error.message);
+        } catch (err) {
+            console.error('Registration error:', err);
+            setError(err.message);
+            toast.error(err.message);
         } finally {
             setIsLoading(false);
         }
@@ -129,6 +158,4 @@ const RegisterForm = ({ shouldRedirect = true }) => {
             </button>*/}
         </form>
     );
-};
-
-export default RegisterForm;
+}

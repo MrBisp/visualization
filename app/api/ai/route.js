@@ -7,12 +7,12 @@ export async function POST(req) {
     try {
         const { systemPrompt, userPrompt } = await req.json();
 
-        console.log("-- New AI Request --")
-        console.log("System Prompt:", systemPrompt);
-        console.log("User Prompt:", userPrompt);
+        //console.log("-- New AI Request --")
+        //console.log("System Prompt:", systemPrompt);
+        //console.log("User Prompt:", userPrompt);
 
         const completion = await openai.chat.completions.create({
-            model: "gpt-4o",
+            model: "gpt-4o-mini",
             messages: [
                 { role: "system", content: systemPrompt },
                 { role: "user", content: userPrompt },
@@ -21,9 +21,9 @@ export async function POST(req) {
             max_tokens: 1000,
         });
 
-        console.log("-- AI Response --")
-        console.log("Content:", completion.choices[0].message.content);
-        console.log("-- End of AI Response --")
+        //console.log("-- AI Response --")
+        //console.log("Content:", completion.choices[0].message.content);
+        //console.log("-- End of AI Response --")
 
         return NextResponse.json({ content: completion.choices[0].message.content });
 
