@@ -4,6 +4,7 @@ import { useState, useEffect } from "react";
 import { useSearchParams } from "next/navigation";
 import Link from "next/link";
 import Image from "next/image";
+import { useSession } from "next-auth/react";
 import ButtonSignin from "./ButtonSignin";
 import logo from "@/app/icon.png";
 import config from "@/config";
@@ -23,21 +24,44 @@ const links = [
   },
 ];
 
-const cta = <ButtonSignin extraStyle="btn-primary" />;
-
 // A header with a logo on the left, links in the center (like Pricing, etc...), and a CTA (like Get Started or Login) on the right.
 // The header is responsive, and on mobile, the links are hidden behind a burger button.
 const Header = () => {
   const searchParams = useSearchParams();
   const [isOpen, setIsOpen] = useState(false);
+  const { data: session } = useSession();
 
   // setIsOpen(false) when the route changes (i.e: when the user clicks on a link on mobile)
   useEffect(() => {
     setIsOpen(false);
   }, [searchParams]);
 
+  const cta = session ? (
+    <Link
+      href="/dashboard"
+      className="flex items-center gap-2 hover:opacity-75 transition-opacity"
+    >
+      {session.user?.image ? (
+        <Image
+          src={session.user.image}
+          alt={session.user.name || "User"}
+          width={32}
+          height={32}
+          className="rounded-full"
+        />
+      ) : (
+        <div className="w-8 h-8 rounded-full bg-primary flex items-center justify-center text-primary-content">
+          {session.user?.name?.[0] || "U"}
+        </div>
+      )}
+      <span>{session.user?.name || "Dashboard"}</span>
+    </Link>
+  ) : (
+    <ButtonSignin extraStyle="btn-primary" />
+  );
+
   return (
-    <header className="bg-base-200">
+    <header className="bg-base-200" style={{ backgroundColor: "#fffbf4" }}>
       <nav
         className="container flex items-center justify-between px-8 py-4 mx-auto"
         aria-label="Global"

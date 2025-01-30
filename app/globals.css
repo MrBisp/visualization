@@ -5,6 +5,9 @@
 html,
 body {
   scroll-behavior: smooth !important;
+  background-color: #fffbf4;
+  overflow: auto;
+  min-height: 100vh;
 }
 
 /* It makes the HTML progress bar filling smooth when value change. */
@@ -144,6 +147,18 @@ progress::-webkit-progress-value {
 
 .animated-popup {
   animation: gelatine 0.5s ease-in-out;
+}
+
+.outer-circle {
+  background: rgba(247, 228, 210, 0.7);
+}
+
+.inner-circle {
+  background: rgba(247, 228, 210, 0.7);
+}
+
+.outer-circle, .inner-circle {
+  border: none;
 }
 
 @keyframes gelatine {

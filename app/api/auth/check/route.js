@@ -1,35 +1,46 @@
+import { getServerSession } from "next-auth";
+import { authOptions } from "@/libs/next-auth";
 import { createClient } from '@supabase/supabase-js';
-import { NextResponse } from 'next/server';
-import { cookies } from 'next/headers';
+
+const supabase = createClient(
+    process.env.NEXT_PUBLIC_SUPABASE_URL,
+    process.env.SUPABASE_SERVICE_ROLE_KEY
+);
 
 export async function GET() {
     try {
-        const cookieStore = cookies();
-        const supabase = createClient(
-            process.env.NEXT_PUBLIC_SUPABASE_URL,
-            process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY,
-            {
-                cookies: {
-                    get(name) {
-                        return cookieStore.get(name)?.value;
-                    },
-                },
-            }
-        );
+        const session = await getServerSession(authOptions);
+        
+        if (!session?.user) {
+            return new Response(JSON.stringify({ error: 'Unauthorized' }), {
+                status: 401,
+                headers: { 'Content-Type': 'application/json' },
+            });
+        }
 
-        const { data: { session }, error } = await supabase.auth.getSession();
+        // Check if user exists in public.users table
+        const { data: user, error } = await supabase
+            .from('users')
+            .select('id')
+            .eq('id', session.user.id)
+            .single();
 
-        if (error) throw error;
+        if (error || !user) {
+            return new Response(JSON.stringify({ error: 'User not found' }), {
+                status: 404,
+                headers: { 'Content-Type': 'application/json' },
+            });
+        }
 
-        return NextResponse.json({ 
-            isAuthenticated: !!session,
-            userId: session?.user?.id 
+        return new Response(JSON.stringify({ success: true }), {
+            status: 200,
+            headers: { 'Content-Type': 'application/json' },
         });
     } catch (error) {
-        console.error('Auth check error:', error);
-        return NextResponse.json({ 
-            isAuthenticated: false,
-            error: 'Failed to check authentication'
-        }, { status: 500 });
+        console.error('Server error:', error);
+        return new Response(JSON.stringify({ error: 'Internal server error' }), {
+            status: 500,
+            headers: { 'Content-Type': 'application/json' },
+        });
     }
 } 

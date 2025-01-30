@@ -13,14 +13,29 @@ export const SECTION_TYPES = {
   REFLECTION: 'reflection'
 };
 
-export async function initializeVisualization({ text, voiceId }) {
+export async function initializeVisualization({ text, voiceId, userId = null }) {
   try {
+    let title = 'Visualization 1';
+
+    // Only get visualization count if there's a user ID
+    if (userId) {
+      const { count: visualizationCount, error: countError } = await supabase
+        .from('visualizations')
+        .select('*', { count: 'exact', head: true })
+        .eq('user_id', userId);
+
+      if (countError) throw countError;
+      title = `Visualization ${(visualizationCount || 0) + 1}`;
+    }
+
     const { data: visualization, error } = await supabase
       .from('visualizations')
       .insert({
         description: text,
         selected_voice: voiceId,
-        status: 'pending'
+        status: 'pending',
+        user_id: userId,
+        title: title
       })
       .select()
       .single();

@@ -80,28 +80,27 @@ const features = [
   }
 ];
 
-// An SEO-friendly accordion component including the title and a description (when clicked.)
+// Updated Item component with better responsive classes
 const Item = ({ feature, isOpen, setFeatureSelected }) => {
   const accordion = useRef(null);
   const { title, description, svg } = feature;
 
   return (
-    <li>
+    <li className="border-b border-base-200 last:border-none">
       <button
-        className="relative flex gap-2 items-center w-full py-5 text-base font-medium text-left md:text-lg"
+        className="relative flex gap-2 items-center w-full py-4 sm:py-5 text-left"
         onClick={(e) => {
           e.preventDefault();
           setFeatureSelected();
         }}
         aria-expanded={isOpen}
       >
-        <span className={`duration-100 ${isOpen ? "text-secondary" : ""}`}>
+        <span className={`duration-100 flex-shrink-0`} style={{ color: isOpen ? "#cc6a4c" : "" }}>
           {svg}
         </span>
         <span
-          className={`flex-1 text-base-content ${
-            isOpen ? "text-secondary font-semibold" : ""
-          }`}
+            className={`flex-1 text-sm sm:text-base md:text-lg`}
+            style={{ color: isOpen ? "#cc6a4c" : "" }}
         >
           <h3 className="inline">{title}</h3>
         </span>
@@ -116,17 +115,16 @@ const Item = ({ feature, isOpen, setFeatureSelected }) => {
             : { maxHeight: 0, opacity: 0 }
         }
       >
-        <div className="pb-5 leading-relaxed">{description}</div>
+        <div className="pb-4 sm:pb-5 pl-8 text-sm sm:text-base leading-relaxed">{description}</div>
       </div>
     </li>
   );
 };
 
-// A component to display the media (video or image) of the feature. If the type is not specified, it will display an empty div.
-// Video are set to autoplay for best UX.
+// Updated Media component with better responsive sizing
 const Media = ({ feature }) => {
   const { type, path, format, alt } = feature;
-  const style = "rounded-2xl aspect-square w-full sm:w-[26rem]";
+  const style = "rounded-2xl aspect-square w-full max-w-md mx-auto lg:max-w-lg";
   const size = {
     width: 500,
     height: 500,
@@ -158,7 +156,7 @@ const Media = ({ feature }) => {
       />
     );
   } else {
-    return <div className={`${style} !border-none`}></div>;
+    return <div className={`${style} !border-none bg-base-200`}></div>;
   }
 };
 
@@ -169,19 +167,21 @@ const FeaturesAccordion = () => {
 
   return (
     <section
-      className="py-24 md:py-32 space-y-24 md:space-y-32 max-w-7xl mx-auto bg-base-100 "
+      className="py-12 sm:py-16 lg:py-20 space-y-12 sm:space-y-16 lg:space-y-20 max-w-7xl mx-auto bg-base-100"
       id="features"
+      style={{ backgroundColor: "transparent" }}
     >
-      <div className="px-8">
-        <h2 className="font-extrabold text-4xl lg:text-6xl tracking-tight mb-12 md:mb-24">
+      <div className="px-4 sm:px-8">
+        <h2 className="font-extrabold text-2xl sm:text-3xl lg:text-5xl tracking-tight mb-8 sm:mb-12 lg:mb-16">
           All you need to train your mind like a pro
-          <span className="bg-neutral text-neutral-content px-2 md:px-4 ml-1 md:ml-1.5 leading-relaxed whitespace-nowrap">
+          <span className="bg-neutral text-neutral-content px-2 sm:px-3 ml-1 sm:ml-2 leading-relaxed inline-block sm:inline" style={{ backgroundColor: "#cc6a4c" }}>
             and get results
           </span>
         </h2>
-        <div className=" flex flex-col md:flex-row gap-12 md:gap-24">
-          <div className="grid grid-cols-1 items-stretch gap-8 sm:gap-12 lg:grid-cols-2 lg:gap-20">
-            <ul className="w-full">
+        
+        <div className="flex flex-col lg:flex-row gap-8 sm:gap-12 lg:gap-20">
+          <div className="grid grid-cols-1 items-start gap-8 sm:gap-12 lg:grid-cols-2 lg:gap-16 w-full">
+            <ul className="w-full divide-y divide-base-200">
               {features.map((feature, i) => (
                 <Item
                   key={feature.title}
@@ -193,7 +193,9 @@ const FeaturesAccordion = () => {
               ))}
             </ul>
 
-            <Media feature={features[featureSelected]} key={featureSelected} />
+            <div className="hidden lg:block sticky top-8">
+              <Media feature={features[featureSelected]} key={featureSelected} />
+            </div>
           </div>
         </div>
       </div>

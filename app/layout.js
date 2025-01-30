@@ -6,6 +6,7 @@ import "./globals.css";
 import Head from "next/head";
 import 'leaflet/dist/leaflet.css';
 import dynamic from 'next/dynamic';
+import RootLayoutContent from "@/components/RootLayoutContent";
 
 const font = Inter({ subsets: ["latin"] });
 const MapNavBar = dynamic(() => import('@/components/MapNavBar'), {
@@ -37,7 +38,9 @@ export default function RootLayout({ children }) {
 			</Head>
 			<body>
 				<ClientLayout>
-					{children}
+					<RootLayoutContent>
+						{children}
+					</RootLayoutContent>
 				</ClientLayout>
 			</body>
 		</html>

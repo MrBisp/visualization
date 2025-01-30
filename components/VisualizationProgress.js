@@ -9,9 +9,9 @@ export default function VisualizationProgress({
 }) {
     return (
         <div className="mb-8">
-            <div className="flex items-center justify-between mb-4">
+            <div className="flex items-center justify-between mb-4 flex-col">
                 <div>
-                    <h2 className="text-xl font-semibold mb-2">
+                    <h2 className="text-xl font-semibold mb-2 text-center">
                         {currentSection ? (
                             <>
                                 {Object.keys(SECTION_TYPES).find(key => 

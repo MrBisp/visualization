@@ -62,7 +62,7 @@ const studies = [
 
 const FeaturesGrid = () => {
   return (
-    <section className="py-20 bg-base-100" id="backed-by-neuroscience">
+    <section className="py-20 bg-base-100" id="backed-by-neuroscience" style={{ backgroundColor: "transparent" }}>
       <div className="flex flex-col max-w-[82rem] gap-16 md:gap-20 px-4 mx-auto">
         <h2 className="max-w-3xl font-black text-4xl md:text-6xl tracking-[-0.01em] text-base-content">
           Visualization is backed <br /> by {" "}
@@ -84,6 +84,7 @@ const FeaturesGrid = () => {
                   hover:bg-base-300 transition-all duration-300
                   group border border-base-300
                 `}
+                style={{ backgroundColor: "#f7e4d2" }}
               >
                 <div className="space-y-4">
                   <h3 className="font-bold text-xl lg:text-2xl tracking-tight text-base-content">

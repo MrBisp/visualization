@@ -27,7 +27,7 @@ const ButtonSignin = ({ text = "Get started", extraStyle }) => {
       >
         {text}
       </button>
-      {isModalOpen && <LoginModal isAutoOpen={true} />}
+      <LoginModal isOpen={isModalOpen} setIsOpen={setIsModalOpen} />
     </>
   );
 };

@@ -1,26 +1,29 @@
 import Image from "next/image";
 import config from "@/config";
 import Link from "next/link";
+
 const Hero = () => {
   return (
-    <section className="max-w-7xl mx-auto bg-base-100 flex flex-col lg:flex-row items-center justify-center gap-16 lg:gap-20 px-8 py-8 lg:py-20">
-      <div className="flex flex-col gap-10 lg:gap-14 items-center justify-center text-center lg:text-left lg:items-start">
-        <h1 className="font-extrabold text-4xl lg:text-6xl tracking-tight md:-mb-4">
+    <section className="max-w-7xl mx-auto bg-base-100 flex flex-col lg:flex-row items-center justify-center gap-8 lg:gap-20 px-4 sm:px-8 py-8 lg:py-20" style={{ backgroundColor: "transparent" }}>
+      <div className="flex flex-col gap-6 lg:gap-14 items-center lg:items-start max-w-2xl">
+        <h1 className="font-extrabold text-3xl sm:text-4xl lg:text-6xl tracking-tight text-center lg:text-left">
           Rewire Your Mind for Success in Just 17 Minutes a Day
         </h1>
-        <p className="text-lg opacity-80 leading-relaxed">
+        <p className="text-base sm:text-lg opacity-80 leading-relaxed text-center lg:text-left">
           AI-guided visualizations that sharpen focus, boost confidence, and accelerate performance—backed by <a href="#backed-by-neuroscience" className="underline decoration-dashed">neuroscience</a>.
         </p>
-        <button className="btn btn-primary btn-wide mb-0">
-          <Link href="/getting-started">Create your first visualization</Link>
-        </button>
-        <p className="">
-        ✅ No sign-up required<br/>
-        ✅ Your first visualization is free<br/>
-        ✅ No credit card required
+        <Link href="/getting-started" className="w-full sm:w-auto">
+          <button className="btn btn-primary w-full sm:w-auto">
+            Create your first visualization
+          </button>
+        </Link>
+        <p className="text-sm sm:text-base space-y-1 text-center lg:text-left">
+          <span className="block">✅ No sign-up required</span>
+          <span className="block">✅ Your first visualization is free</span>
+          <span className="block">✅ No credit card required</span>
         </p>
       </div>
-      <div className="flex flex-col gap-10 lg:gap-14 items-center justify-center text-center lg:text-left lg:items-start">
+      <div className="w-full lg:w-auto flex items-center justify-center">
         <p>Hero image</p>
       </div>
     </section>

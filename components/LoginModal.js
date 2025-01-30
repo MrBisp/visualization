@@ -6,15 +6,20 @@ import Modal from "@/components/Modal";
 import { useRouter, useSearchParams } from 'next/navigation';
 import Image from "next/image";
 
-const LoginModal = ({ isAutoOpen = false }) => {
+const LoginModal = ({ isOpen = false, setIsOpen }) => {
     const router = useRouter();
     const searchParams = useSearchParams();
     const inviteCode = searchParams.get('invite');
 
+    const handleLogin = () => {
+        setIsOpen(false);
+        router.push('/auth/login');
+    };
+
     return (
         <Modal
-            isOpen={isAutoOpen}
-            setIsOpen={() => { }} // Keep modal open since we want users to sign up/login
+            isOpen={isOpen}
+            setIsOpen={setIsOpen}
             title="Welcome to [App Name]!"
         >
             <div className="space-y-6 py-4">
@@ -49,7 +54,7 @@ const LoginModal = ({ isAutoOpen = false }) => {
                             <div className="w-full border-t border-gray-200"></div>
                         </div>
                         <div className="relative flex justify-center text-sm">
-                            <span className="px-2 bg-white text-gray-500">or</span>
+                            <span className="px-2 text-gray-500" style={{ backgroundColor: "rgba(255, 255, 255, 0.1)" }}>or</span>
                         </div>
                     </div>
 
@@ -65,7 +70,7 @@ const LoginModal = ({ isAutoOpen = false }) => {
                         <p className="text-sm text-gray-600">
                             Already have an account?{' '}
                             <button
-                                onClick={() => router.push('/auth/login')}
+                                onClick={handleLogin}
                                 className="text-black hover:underline font-medium"
                             >
                                 Log in

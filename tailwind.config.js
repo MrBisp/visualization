@@ -27,6 +27,8 @@ module.exports = {
         wiggle: "wiggle 1.5s ease-in-out infinite",
         popup: "popup 0.25s ease-in-out",
         shimmer: "shimmer 3s ease-out infinite alternate",
+        'circle-pulse': 'circlePulse 2s ease-in-out infinite',
+        'circle-pulse-delayed': 'circlePulse 2s ease-in-out infinite 1s',
       },
       keyframes: {
         opacity: {
@@ -64,6 +66,11 @@ module.exports = {
           "50%": { backgroundPosition: "100% 50%" },
           "100%": { backgroundPosition: "0% 50%" },
         },
+        circlePulse: {
+          '0%': { transform: 'scale(0.90)', opacity: 0.0 },
+          '50%': { transform: 'scale(1.05)', opacity: 0.8 },
+          '100%': { transform: 'scale(0.95)', opacity: 0.0 },
+        },
       },
     },
   },
@@ -73,16 +80,16 @@ module.exports = {
       {
         light: {
           // Base colors
-          "primary": "#118ab2",
-          "primary-focus": "#4023047",      // darker shade for hover/focus
+          "primary": "#CC6A4C",
+          "primary-focus": "#CC6A4C",       // darker shade for hover/focus
           "primary-content": "#ffffff",     // text/content color
           
-          "secondary": "#ef476f",
-          "secondary-focus": "#ffd166",
+          "secondary": "#f7e4d2",
+          "secondary-focus": "#f7e4d2",
           "secondary-content": "#ffffff",
           
-          "accent": "#37CDBE",
-          "accent-focus": "#2AA79B",
+          "accent": "#f7e4d2",
+          "accent-focus": "#f7e4d2",
           "accent-content": "#ffffff",
           
           // Background colors

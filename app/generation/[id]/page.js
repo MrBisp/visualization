@@ -17,7 +17,7 @@ export default function GenerationPage({ params }) {
     const isDebugMode = id === 'debug';
 
     const [isTesting, setIsTesting] = useState(false);
-    const [noAudio, setNoAudio] = useState(true);
+    const [noAudio, setNoAudio] = useState(false);
     
     const [visualization, setVisualization] = useState(null);
     const [currentSection, setCurrentSection] = useState(null);
@@ -151,10 +151,10 @@ export default function GenerationPage({ params }) {
     }, [currentSection, progress]);
 
     const getCurrentMessage = () => {
-        if (!currentSection) return 'Getting everything ready...';
+        if (!currentSection) return 'Getting everything ready... This process typically takes 3-4 minutes in total.';
         
         if (isGeneratingAudio) {
-            return "Converting your visualization into audio...";
+            return "Converting your visualization into audio... (about 1 minute remaining)";
         }
         
         const status = progress[currentSection];
@@ -163,6 +163,10 @@ export default function GenerationPage({ params }) {
         } else if (status === 'pending') {
             return sectionDescriptions[currentSection].pending;
         } else if (status === 'completed') {
+            const allSectionsCompleted = Object.values(progress).every(s => s === 'completed');
+            if (allSectionsCompleted && !visualization?.audio_url) {
+                return "All sections completed, preparing audio generation...";
+            }
             return `${currentSection.split('_').map(word => word.charAt(0).toUpperCase() + word.slice(1).toLowerCase()).join(' ')} completed!`;
         }
         return 'Processing...';
@@ -233,9 +237,9 @@ export default function GenerationPage({ params }) {
     }
 
     return (
-        <div className="min-h-screen p-8 bg-gray-50">
+        <div className="min-h-screen p-8" style={{ backgroundColor: "transparent" }}>
             <div className="max-w-3xl mx-auto">
-                <h1 className="text-3xl font-bold mb-8">Generating Your Visualization</h1>
+                <h1 className="text-3xl font-bold mb-8 text-center">Generating Your Visualization</h1>
                 
                 <VisualizationProgress 
                     currentSection={currentSection}
@@ -250,10 +254,41 @@ export default function GenerationPage({ params }) {
                     progress={progress}
                 />
 
+                {visualization?.audio_url && (
+                    <div className="mt-8 flex gap-4 justify-center">
+                        <button
+                            onClick={() => {
+                                const link = document.createElement('a');
+                                link.href = visualization.audio_url;
+                                link.download = 'visualization.mp3';
+                                document.body.appendChild(link);
+                                link.click();
+                                document.body.removeChild(link);
+                            }}
+                            className="btn btn-primary"
+                        >
+                            <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5 mr-2" viewBox="0 0 20 20" fill="currentColor">
+                                <path fillRule="evenodd" d="M3 17a1 1 0 011-1h12a1 1 0 110 2H4a1 1 0 01-1-1zm3.293-7.707a1 1 0 011.414 0L9 10.586V3a1 1 0 112 0v7.586l1.293-1.293a1 1 0 111.414 1.414l-3 3a1 1 0 01-1.414 0l-3-3a1 1 0 010-1.414z" clipRule="evenodd" />
+                            </svg>
+                            Download Audio
+                        </button>
+                        <button 
+                            onClick={() => router.push('/dashboard')}
+                            className="btn btn-outline"
+                        >
+                            Go to Dashboard
+                        </button>
+                    </div>
+                )}
+
                 {!session && (
-                    <div className="mt-8 bg-white border p-6 rounded-lg">
+                    <div className="mt-8 border p-6 rounded-lg" style={{ backgroundColor: "rgba(247, 228, 210, 0.1)" }}>
                         <p className="text-gray-600 mb-4">
-                            Generating your visualization usually takes 1-2 minutes. In the meantime, you can sign up for a free account to save your visualization and access it anytime.
+                            Your visualization is being generated and will take about 3-4 minutes to complete. Sign up now to:
+                            <ul className="list-disc ml-6 mt-2">
+                                <li>Save this visualization to your account automatically</li>
+                                <li>Access your visualization anytime</li>
+                            </ul>
                         </p>
 
                         <div className="flex flex-col items-center">

@@ -5,6 +5,7 @@ import { useRouter } from 'next/navigation';
 import { initializeVisualization, generateSection, SECTION_TYPES } from '../services/visualizationService';
 import { updateVisualizationStatus } from '../services/visualizationService';
 import { useSession } from 'next-auth/react';
+import { toast } from 'react-hot-toast';
 
 const GettingStarted = () => {
     const router = useRouter();
@@ -121,25 +122,37 @@ const GettingStarted = () => {
         try {
             setGenerationStep(1);
             
+            // Get the latest session data first
+            const currentSession = await fetch('/api/auth/session').then(res => res.json());
+            console.log('Current session:', currentSession); // Debug log
+            
+            // Get user ID from session, making sure we're getting the correct ID
+            const userId = currentSession?.user?.id;
+            console.log('User ID:', userId); // Debug log
+            
+            if (userId) {
+                // Verify user exists in public.users table
+                const userCheckResponse = await fetch('/api/auth/check', {
+                    method: 'GET',
+                    headers: {
+                        'Content-Type': 'application/json',
+                    }
+                });
+                
+                if (!userCheckResponse.ok) {
+                    throw new Error('User not found in database');
+                }
+            }
+            
             // Initialize visualization in DB
             const visualization = await initializeVisualization({ 
                 text: visualizationText,
-                voiceId: getOpenAIVoiceId(selectedVoice)
+                voiceId: getOpenAIVoiceId(selectedVoice),
+                userId: userId // Pass the user ID if available
             });
 
             console.log('Visualization created:', visualization.id);
             
-            // Update session to ensure we have the latest data
-            await updateSession();
-            
-            // Wait a moment for the session to update
-            await new Promise(resolve => setTimeout(resolve, 500));
-            
-            // Get the latest session data
-            const currentSession = await fetch('/api/auth/session').then(res => res.json());
-            console.log('Current session after update:', currentSession);
-            console.log('User ID in session:', currentSession?.user?.id);
-
             // Save to localStorage before redirect
             localStorage.setItem('current_visualization', JSON.stringify({
                 id: visualization.id,
@@ -148,42 +161,11 @@ const GettingStarted = () => {
                 created_at: new Date().toISOString()
             }));
 
-            // If user is logged in, associate the visualization with their account
-            if (currentSession?.user?.id) {
-                console.log('Attempting to associate visualization with user ID:', currentSession.user.id);
-                try {
-                    const response = await fetch('/api/visualization/associate', {
-                        method: 'POST',
-                        headers: {
-                            'Content-Type': 'application/json',
-                        },
-                        body: JSON.stringify({
-                            visualizationId: visualization.id
-                        })
-                    });
-
-                    const responseData = await response.json();
-                    console.log('Association response:', responseData);
-
-                    if (!response.ok) {
-                        console.error('Association failed with status:', response.status);
-                        console.error('Error details:', responseData);
-                    } else {
-                        console.log('Successfully associated visualization');
-                    }
-                } catch (error) {
-                    console.error('Failed to associate visualization:', error);
-                    // Continue with redirect even if association fails
-                }
-            } else {
-                console.log('No user ID in session, skipping association. Session:', currentSession);
-            }
-            
-            // Redirect to generation page
+            // No need to associate the visualization separately since we're creating it with the user ID
             router.push(`/generation/${visualization.id}`);
-            
         } catch (error) {
-            console.error('Failed to initialize visualization:', error);
+            console.error('Generation error:', error);
+            toast.error('Failed to start generation');
             setGenerationStep(0);
         }
     };
@@ -192,22 +174,28 @@ const GettingStarted = () => {
         switch (true) {
             case generationStep === 1:
                 return (
-                    <button className="btn btn-primary btn-wide" disabled>
+                    <button className="btn btn-primary w-full sm:w-auto sm:btn-wide text-center" disabled>
                         <span className="loading loading-spinner"></span>
-                        Initializing Visualization...
+                        <span className="hidden sm:inline">Initializing Visualization...</span>
+                        <span className="sm:hidden">Initializing...</span>
                     </button>
                 );
             case generationStep > 1 && generationStep < 3:
                 return (
-                    <button className="btn btn-primary btn-wide" disabled>
+                    <button className="btn btn-primary w-full sm:w-auto sm:btn-wide text-center" disabled>
                         <span className="loading loading-spinner"></span>
-                        Generating Section {generationStep - 1} of {Object.keys(SECTION_TYPES).length}
+                        <span className="hidden sm:inline">
+                            Generating Section {generationStep - 1} of {Object.keys(SECTION_TYPES).length}
+                        </span>
+                        <span className="sm:hidden">
+                            Step {generationStep - 1}/{Object.keys(SECTION_TYPES).length}
+                        </span>
                     </button>
                 );
             default:
                 return (
                     <button 
-                        className="btn btn-primary btn-wide"
+                        className="btn btn-primary w-full sm:w-auto sm:btn-wide text-center"
                         onClick={handleGeneration}
                     >
                         Generate Visualization
@@ -218,15 +206,15 @@ const GettingStarted = () => {
 
     const renderStep1 = () => (
         <>
-            <div className="flex items-center gap-2 self-start mb-2">
-                <span className="badge badge-primary py-4 px-4">Step 1/3</span>
-                <span className="text-lg">Describe Your Visualization</span>
+            <div className="flex items-center gap-2 self-start mb-4">
+                <span className="badge badge-primary py-3 px-3 sm:py-4 sm:px-4">Step 1/3</span>
+                <span className="text-base sm:text-lg">Describe Your Visualization</span>
             </div>
 
-            <h1 className="font-extrabold text-4xl lg:text-6xl tracking-tight mb-2">
+            <h1 className="font-extrabold text-2xl sm:text-3xl lg:text-4xl tracking-tight mb-2 sm:mb-4">
                 What Do You Want to Visualize?
             </h1>
-            <p className="text-lg mb-4">
+            <p className="text-base sm:text-lg mb-4 sm:mb-6">
                 Research shows that the more details you include in your visualization, the more effective it is.
             </p>
             
@@ -236,18 +224,18 @@ const GettingStarted = () => {
                     placeholder="Describe what you want to visualize..."
                     value={visualizationText}
                     onChange={(e) => setVisualizationText(e.target.value)}
-                    style={{ fontSize: '1.1rem', minHeight: '20rem' }}
+                    style={{ fontSize: '1rem', minHeight: '16rem', lineHeight: '1.5' }}
                 />
             </div>
 
-            <div className="text-center">
-                <p className="text-lg mb-4">
+            <div className="text-center w-full max-w-2xl mt-8">
+                <p className="text-base sm:text-lg mb-4">
                     Or choose from our suggestions:
                 </p>
-                <div className="flex flex-col gap-4">
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 sm:gap-4">
                     {preSelects.map((preSelect) => (
                         <button 
-                            className="btn btn-outline btn-wide mb-0" 
+                            className="btn btn-outline w-full" 
                             key={preSelect.title}
                             onClick={() => handlePreSelectClick(preSelect.description)}
                         >
@@ -256,27 +244,25 @@ const GettingStarted = () => {
                     ))}
                 </div>
             </div>
-
-            <div className="h-24" />
         </>
     );
 
     const renderStep2 = () => (
         <>
-            <div className="flex items-center gap-2 self-start mb-2">
-                <span className="badge badge-primary py-4 px-4">Step 2/3</span>
-                <span className="text-lg">Describe Your Environment</span>
+            <div className="flex items-center gap-2 self-start mb-4">
+                <span className="badge badge-primary py-3 px-3 sm:py-4 sm:px-4">Step 2/3</span>
+                <span className="text-base sm:text-lg">Describe Your Environment</span>
             </div>
 
             <button 
-                className="btn btn-ghost btn-sm self-start mb-2"
+                className="btn btn-ghost btn-sm self-start mb-4"
                 onClick={() => setStep(1)}
             >
                 ← Back
             </button>
 
-            <h2 className="font-bold text-3xl mb-4">Where Will You Practice This Visualization?</h2>
-            <p className="text-lg mb-4 max-w-2xl">
+            <h2 className="font-bold text-2xl sm:text-3xl mb-3 sm:mb-4">Where Will You Practice This Visualization?</h2>
+            <p className="text-base sm:text-lg mb-4 sm:mb-6 max-w-2xl">
                 The environment where you practice your visualization can greatly impact its effectiveness. 
                 Describe where you'll be when listening to this visualization.
             </p>
@@ -287,41 +273,39 @@ const GettingStarted = () => {
                     placeholder="Describe your environment..."
                     value={environmentText}
                     onChange={(e) => setEnvironmentText(e.target.value)}
-                    style={{ fontSize: '1.1rem', minHeight: '10rem' }}
+                    style={{ fontSize: '1rem', minHeight: '10rem', lineHeight: '1.5' }}
                 />
             </div>
-
-            <div className="h-24" />
         </>
     );
 
     const renderStep3 = () => (
         <>
-            <div className="flex items-center gap-2 self-start mb-2">
-                <span className="badge badge-primary py-4 px-4">Step 3/3</span>
-                <span className="text-lg">Choose Voice & Generate</span>
+            <div className="flex items-center gap-2 self-start mb-4">
+                <span className="badge badge-primary py-3 px-3 sm:py-4 sm:px-4">Step 3/3</span>
+                <span className="text-base sm:text-lg">Choose Voice & Generate</span>
             </div>
 
             <button 
-                className="btn btn-ghost btn-sm self-start mb-2"
+                className="btn btn-ghost btn-sm self-start mb-4"
                 onClick={() => setStep(2)}
             >
                 ← Back
             </button>
 
-            <h2 className="font-bold text-3xl mb-4">Choose Your Preferred Voice</h2>
+            <h2 className="font-bold text-2xl sm:text-3xl mb-4">Choose Your Preferred Voice</h2>
             
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-6 w-full max-w-2xl">
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 sm:gap-4 mb-6 w-full max-w-2xl">
                 {voices.map((voice) => (
                     <div
                         key={voice.id}
-                        className={`border rounded-lg p-4 cursor-pointer hover:border-secondary transition-colors ${
+                        className={`border rounded-lg p-3 sm:p-4 cursor-pointer hover:border-secondary transition-colors ${
                             selectedVoice === voice.id ? 'border-secondary bg-secondary/5' : 'border-base-300'
                         }`}
                         onClick={() => setSelectedVoice(voice.id)}
                     >
                         <div className="flex items-center justify-between mb-2">
-                            <h3 className="font-semibold text-lg">{voice.label}</h3>
+                            <h3 className="font-semibold text-base sm:text-lg">{voice.label}</h3>
                             <button
                                 className="btn btn-sm btn-circle"
                                 onClick={(e) => {
@@ -339,27 +323,25 @@ const GettingStarted = () => {
 
             <div className="w-full max-w-2xl">
                 <label className="label">
-                    <span className="label-text text-lg font-semibold">Your Visualization:</span>
+                    <span className="label-text text-base sm:text-lg font-semibold">Your Visualization:</span>
                 </label>
                 <textarea 
                     className="textarea textarea-bordered w-full"
                     value={visualizationText}
                     onChange={(e) => setVisualizationText(e.target.value)}
-                    style={{ fontSize: '1.1rem', minHeight: '20rem' }}
+                    style={{ fontSize: '1rem', minHeight: '16rem', lineHeight: '1.5' }}
                 />
             </div>
-
-            <div className="h-24" />
         </>
     );
 
     const renderBottomSection = () => (
-        <div className="fixed bottom-0 left-0 right-0 border-t" style={{ backgroundColor: 'rgba(255, 255, 255, 0.9)' }}>
-            <div className="max-w-7xl mx-auto px-8 py-4 flex justify-between items-center">
-                <div className="flex-1 flex justify-end">
+        <div className="fixed bottom-0 left-0 right-0 border-t bg-base-100/90 backdrop-blur supports-[backdrop-filter]:bg-base-100/50">
+            <div className="max-w-7xl mx-auto px-4 sm:px-8 py-4 flex justify-between items-center">
+                <div className="w-full flex justify-center sm:justify-end">
                     {step === 1 ? (
                         <button 
-                            className="btn btn-primary btn-wide"
+                            className="btn btn-primary w-full sm:w-auto sm:btn-wide"
                             onClick={() => setStep(2)}
                             disabled={!visualizationText.trim()}
                         >
@@ -367,9 +349,8 @@ const GettingStarted = () => {
                         </button>
                     ) : step === 2 ? (
                         <button 
-                            className="btn btn-primary btn-wide"
+                            className="btn btn-primary w-full sm:w-auto sm:btn-wide"
                             onClick={() => {
-                                // Only append environment text if it's not empty
                                 if (environmentText.trim()) {
                                     setVisualizationText(visualizationText + "\n\nEnvironment for practice:\n" + environmentText);
                                 }
@@ -379,7 +360,9 @@ const GettingStarted = () => {
                             Next
                         </button>
                     ) : (
-                        renderGenerationButton()
+                        <div className="w-full flex justify-center sm:justify-end">
+                            {renderGenerationButton()}
+                        </div>
                     )}
                 </div>
             </div>
@@ -388,7 +371,7 @@ const GettingStarted = () => {
 
     return (
         <>
-            <div className="max-w-7xl mx-auto bg-base-100 flex flex-col lg:flex-col items-center justify-center gap-4 lg:gap-6 px-8 pt-1 pb-8 lg:py-12">   
+            <div className="max-w-7xl mx-auto bg-base-100 flex flex-col items-start justify-start gap-4 px-4 sm:px-8 pt-6 sm:pt-8 pb-32" style={{ backgroundColor: "transparent" }}>   
                 {step === 1 ? renderStep1() : step === 2 ? renderStep2() : renderStep3()}
             </div>
             {renderBottomSection()}

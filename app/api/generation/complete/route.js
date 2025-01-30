@@ -98,19 +98,29 @@ export async function POST(request) {
         const textChunks = splitTextIntoChunks(fullText, MAX_TTS_LENGTH);
         console.log(`Split text into ${textChunks.length} chunks`);
 
-        // Generate TTS for each chunk
-        const audioChunks = [];
-        for (let i = 0; i < textChunks.length; i++) {
-            const chunk = textChunks[i];
+        // Generate TTS for each chunk in parallel
+        const audioChunksPromises = textChunks.map(async (chunk, i) => {
+            console.log(`Starting audio chunk ${i + 1} of ${textChunks.length}`);
             const mp3 = await openai.audio.speech.create({
                 model: "tts-1",
                 voice: visualization.selected_voice,
                 input: chunk,
             });
             const buffer = Buffer.from(await mp3.arrayBuffer());
-            audioChunks.push(buffer);
-            console.log(`Generated audio chunk ${i + 1} of ${textChunks.length}`);
-        }
+            console.log(`Completed audio chunk ${i + 1} of ${textChunks.length}`);
+            
+            return buffer;
+        });
+
+        // Wait for all chunks to complete
+        const audioChunks = await Promise.all(audioChunksPromises);
+        console.log('All audio chunks generated successfully');
+        //Log the tokens used $15.00 usd per 1,000,000 characters
+        const totalLength = textChunks.reduce((acc, chunk) => acc + chunk.length, 0);
+        console.log(`Total length: ${totalLength}`);
+        console.log(`Tokens used: ${totalLength / 1000000 * 15.00}`);
+        console.log(`Cost: $${(totalLength / 1000000 * 15.00).toFixed(2)}`);
+        console.log("Generations per 1 USD: ", 1 / (totalLength / 1000000 * 15.00));
 
         // Combine all audio chunks into a single base64 string
         const combinedBuffer = Buffer.concat(audioChunks);

@@ -27,7 +27,7 @@ const Modal = ({ isOpen, setIsOpen, children, title = "Title" }) => {
         </Transition.Child>
 
         {/* Modal panel */}
-        <div className="fixed inset-0 flex items-center justify-center p-4">
+        <div className="fixed inset-0 flex items-center justify-center p-4" style={{ backgroundColor: "rgba(247, 228, 210, 0.5)" }}>
           <Transition.Child
             as={Fragment}
             enter="ease-out duration-300"
@@ -37,7 +37,7 @@ const Modal = ({ isOpen, setIsOpen, children, title = "Title" }) => {
             leaveFrom="opacity-100 scale-100"
             leaveTo="opacity-0 scale-95"
           >
-            <Dialog.Panel className="mx-auto max-w-sm rounded bg-white p-6">
+            <Dialog.Panel className="mx-auto max-w-sm rounded p-6 shadow-lg" style={{ backgroundColor: "rgba(247, 228, 210, 0.8)" }}>
               <Dialog.Title className="text-lg font-medium">{title}</Dialog.Title>
               {children}
             </Dialog.Panel>
