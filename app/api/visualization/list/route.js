@@ -28,7 +28,8 @@ export async function GET() {
                     status
                 ),
                 visualization_audio (
-                    id
+                    id,
+                    storage_path
                 )
             `)
             .eq('user_id', session.user.id)
@@ -59,13 +60,24 @@ export async function GET() {
                 else status = 'pending';
             }
 
-            // Check if audio exists
-            const hasAudio = visualization.visualization_audio?.length > 0;
+            // Check if audio exists and get public URL if it does
+            const audioFile = visualization.visualization_audio?.[0];
+            const hasAudio = !!audioFile;
+            let audioUrl = null;
+
+            if (hasAudio && audioFile.storage_path) {
+                const { data: { publicUrl } } = supabase
+                    .storage
+                    .from('visualization-audio')
+                    .getPublicUrl(audioFile.storage_path);
+                audioUrl = publicUrl;
+            }
 
             return {
                 ...visualization,
                 status,
                 has_audio: hasAudio,
+                audio_url: audioUrl,
                 visualization_sections: undefined,
                 visualization_audio: undefined
             };

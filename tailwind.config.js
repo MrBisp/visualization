@@ -27,8 +27,8 @@ module.exports = {
         wiggle: "wiggle 1.5s ease-in-out infinite",
         popup: "popup 0.25s ease-in-out",
         shimmer: "shimmer 3s ease-out infinite alternate",
-        'circle-pulse': 'circlePulse 2s ease-in-out infinite',
-        'circle-pulse-delayed': 'circlePulse 2s ease-in-out infinite 1s',
+        'circle-pulse': 'circlePulse 8s ease-in-out infinite',
+        'circle-pulse-delayed': 'circlePulse 8s ease-in-out infinite 4s',
       },
       keyframes: {
         opacity: {

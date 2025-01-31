@@ -31,7 +31,7 @@ async function fetchWithRetry(id, userId, retryCount = 0) {
         const { data: audioData, error: audioError } = await supabase
             .from('visualization_audio')
             .select(`
-                audio_url,
+                storage_path,
                 visualization:visualizations!inner(user_id)
             `)
             .eq('visualization_id', id)
@@ -61,8 +61,13 @@ async function fetchWithRetry(id, userId, retryCount = 0) {
             return null;
         }
 
+        const { data: { publicUrl } } = supabase
+            .storage
+            .from('visualization-audio')
+            .getPublicUrl(audioData.storage_path);
+
         return {
-            audio_url: audioData.audio_url
+            audio_url: publicUrl
         };
     } catch (error) {
         if (retryCount < maxRetries) {
@@ -81,6 +86,7 @@ export async function GET(request, { params }) {
     try {
         const session = await getServerSession(authOptions);
         if (!session) {
+            console.log('GET /api/visualization/[id]/audio: Unauthorized');
             return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
         }
 

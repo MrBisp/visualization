@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useRef, useEffect } from 'react';
+import { useState, useRef, useEffect, useCallback } from 'react';
 
 const formatTime = (seconds) => {
     if (!seconds || isNaN(seconds)) return '0:00';
@@ -21,8 +21,9 @@ export default function AudioPlayer({ visualizationId, audioUrl: initialAudioUrl
     const [duration, setDuration] = useState(0);
     const [playbackRate, setPlaybackRate] = useState(1);
     const audioRef = useRef(null);
+    const audioElementRef = useRef(null);
 
-    const fetchAudio = async () => {
+    const fetchAudio = useCallback(async () => {
         try {
             console.log('Starting audio fetch...');
             setIsLoading(true);
@@ -34,96 +35,81 @@ export default function AudioPlayer({ visualizationId, audioUrl: initialAudioUrl
                 throw new Error(data.error || 'Failed to fetch audio');
             }
             const data = await response.json();
-            console.log('Audio URL fetched:', data.audio_url ? 'URL exists' : 'No URL');
             setAudioUrl(data.audio_url);
         } catch (error) {
             console.error('Error fetching audio:', error);
             setError(error.message);
             setIsLoading(false);
         }
-    };
+    }, [visualizationId]);
 
-    // Single useEffect to handle both fetching and audio setup
+    // Effect for fetching audio URL if needed
     useEffect(() => {
+        if (!audioUrl && visualizationId && !initialAudioUrl) {
+            fetchAudio();
+        }
+    }, [audioUrl, visualizationId, initialAudioUrl, fetchAudio]);
+
+    // Separate effect for audio element setup
+    useEffect(() => {
+        if (!audioUrl) return;
+
         let mounted = true;
-        let audio = null;
+        const audio = new Audio();
+        audioElementRef.current = audio;
 
-        const initAudio = async () => {
-            // If we don't have an audio URL and need to fetch it
-            if (!audioUrl && visualizationId && !initialAudioUrl) {
-                await fetchAudio();
-                return;
-            }
-
-            // If we have an audio URL, set up the audio element
-            if (audioUrl && mounted) {
-                console.log('Setting up audio element...');
-                audio = new Audio();
-                audio.preload = 'metadata';
-                audioRef.current = audio;
-
-                const handleTimeUpdate = () => {
-                    if (!mounted) return;
-                    setCurrentTime(audio.currentTime);
-                    if (!isNaN(audio.duration)) {
-                        setProgress((audio.currentTime / audio.duration) * 100);
-                    }
-                };
-
-                const handleMetadataLoaded = () => {
-                    if (!mounted) return;
-                    console.log('Metadata loaded:', {
-                        duration: audio.duration,
-                        isValid: !isNaN(audio.duration)
-                    });
-                    
-                    if (!isNaN(audio.duration) && audio.duration !== Infinity) {
-                        setDuration(audio.duration);
-                        setIsMetadataLoaded(true);
-                        setIsLoading(false);
-                        console.log('Audio ready to play');
-                    } else {
-                        console.log('Invalid duration after metadata load');
-                        setError('Invalid audio duration');
-                        setIsLoading(false);
-                    }
-                };
-
-                const handleLoadStart = () => {
-                    if (!mounted) return;
-                    console.log('Audio loading started');
-                    setIsMetadataLoaded(false);
-                    setIsLoading(true);
-                };
-
-                const handleError = (e) => {
-                    if (!mounted) return;
-                    console.error('Audio element error:', e.target.error);
-                    setError('Failed to load audio file');
-                    setIsLoading(false);
-                    setIsMetadataLoaded(false);
-                };
-
-                const handleEnded = () => {
-                    if (!mounted) return;
-                    setIsPlaying(false);
-                    setCurrentTime(0);
-                    setProgress(0);
-                };
-
-                // Add event listeners before setting src
-                audio.addEventListener('loadstart', handleLoadStart);
-                audio.addEventListener('timeupdate', handleTimeUpdate);
-                audio.addEventListener('loadedmetadata', handleMetadataLoaded);
-                audio.addEventListener('error', handleError);
-                audio.addEventListener('ended', handleEnded);
-
-                // Set the source after adding event listeners
-                audio.src = audioUrl;
+        const handleTimeUpdate = () => {
+            if (!mounted) return;
+            setCurrentTime(audio.currentTime);
+            if (!isNaN(audio.duration)) {
+                setProgress((audio.currentTime / audio.duration) * 100);
             }
         };
 
-        initAudio();
+        const handleMetadataLoaded = () => {
+            if (!mounted) return;
+            if (!isNaN(audio.duration) && audio.duration !== Infinity) {
+                setDuration(audio.duration);
+                setIsMetadataLoaded(true);
+                setIsLoading(false);
+            } else {
+                setError('Invalid audio duration');
+                setIsLoading(false);
+            }
+        };
+
+        const handleLoadStart = () => {
+            if (!mounted) return;
+            setIsMetadataLoaded(false);
+            setIsLoading(true);
+        };
+
+        const handleError = (e) => {
+            if (!mounted) return;
+            console.error('Audio element error:', e.target.error);
+            setError('Failed to load audio file');
+            setIsLoading(false);
+            setIsMetadataLoaded(false);
+        };
+
+        const handleEnded = () => {
+            if (!mounted) return;
+            setIsPlaying(false);
+            setCurrentTime(0);
+            setProgress(0);
+        };
+
+        // Add event listeners
+        audio.addEventListener('loadstart', handleLoadStart);
+        audio.addEventListener('timeupdate', handleTimeUpdate);
+        audio.addEventListener('loadedmetadata', handleMetadataLoaded);
+        audio.addEventListener('error', handleError);
+        audio.addEventListener('ended', handleEnded);
+
+        // Set audio properties
+        audio.preload = 'metadata';
+        audio.src = audioUrl;
+        audioRef.current = audio;
 
         // Cleanup function
         return () => {
@@ -134,11 +120,13 @@ export default function AudioPlayer({ visualizationId, audioUrl: initialAudioUrl
                 audio.removeEventListener('loadedmetadata', handleMetadataLoaded);
                 audio.removeEventListener('error', handleError);
                 audio.removeEventListener('ended', handleEnded);
+                audio.pause();
                 audio.src = '';
                 audioRef.current = null;
+                audioElementRef.current = null;
             }
         };
-    }, [audioUrl, visualizationId, initialAudioUrl]);
+    }, [audioUrl]); // Only re-run if audioUrl changes
 
     const togglePlay = () => {
         if (audioRef.current.paused) {

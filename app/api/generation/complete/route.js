@@ -1,10 +1,22 @@
 import { NextResponse } from "next/server";
-import { supabase } from "@/libs/supabase";
+import { createClient } from '@supabase/supabase-js';
 import { getServerSession } from "next-auth";
 import { authOptions } from "@/libs/next-auth";
 import OpenAI from "openai";
 
 const openai = new OpenAI();
+
+// Create Supabase client with service role key for admin access
+const supabase = createClient(
+    process.env.NEXT_PUBLIC_SUPABASE_URL,
+    process.env.SUPABASE_SERVICE_ROLE_KEY,
+    {
+        auth: {
+            persistSession: false,
+            autoRefreshToken: false,
+        }
+    }
+);
 
 const MAX_TTS_LENGTH = 4000; // Slightly less than 4096 to be safe
 
@@ -122,21 +134,49 @@ export async function POST(request) {
         console.log(`Cost: $${(totalLength / 1000000 * 15.00).toFixed(2)}`);
         console.log("Generations per 1 USD: ", 1 / (totalLength / 1000000 * 15.00));
 
-        // Combine all audio chunks into a single base64 string
+        // Combine all audio chunks into a single buffer
         const combinedBuffer = Buffer.concat(audioChunks);
-        const audioData = `data:audio/mp3;base64,${combinedBuffer.toString('base64')}`;
         
-        // Store audio data in Supabase
+        // Generate a unique filename for storage
+        const fileName = `${visualization.id}/${Date.now()}.mp3`;
+        const filePath = `visualizations/${visualization.user_id}/${fileName}`;
+
+        // Upload the audio file to Supabase Storage
+        const { data: storageData, error: storageError } = await supabase
+            .storage
+            .from('visualization-audio')
+            .upload(filePath, combinedBuffer, {
+                contentType: 'audio/mp3',
+                cacheControl: '3600'
+            });
+
+        if (storageError) {
+            console.error('Error uploading to storage:', storageError);
+            throw storageError;
+        }
+
+        // Get a signed URL that expires in 1 hour
+        const { data: { signedUrl }, error: signedUrlError } = await supabase
+            .storage
+            .from('visualization-audio')
+            .createSignedUrl(filePath, 3600);
+
+        if (signedUrlError) {
+            console.error('Error creating signed URL:', signedUrlError);
+            throw signedUrlError;
+        }
+        
+        // Store the file path in the database
         const { error: audioError } = await supabase
             .from('visualization_audio')
             .insert({
                 visualization_id: id,
-                audio_url: audioData,
+                storage_path: filePath,
                 created_at: new Date().toISOString()
             });
 
         if (audioError) {
-            console.error('Error storing audio:', audioError);
+            console.error('Error storing audio path:', audioError);
             throw audioError;
         }
 
@@ -154,29 +194,9 @@ export async function POST(request) {
             throw updateError;
         }
 
-        // Get the final visualization data with sections and audio
-        const { data: finalVisualization, error: finalFetchError } = await supabase
-            .from('visualizations')
-            .select(`
-                *,
-                visualization_sections (
-                    *
-                ),
-                visualization_audio (
-                    *
-                )
-            `)
-            .eq('id', id)
-            .single();
-
-        if (finalFetchError) {
-            console.error('Error fetching final visualization:', finalFetchError);
-            throw finalFetchError;
-        }
-
         return NextResponse.json({ 
             success: true,
-            visualization: finalVisualization
+            audio_url: signedUrl
         });
 
     } catch (error) {

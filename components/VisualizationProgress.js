@@ -5,8 +5,14 @@ export default function VisualizationProgress({
     progress, 
     isGeneratingAudio, 
     getCurrentMessage,
-    SECTION_TYPES 
+    SECTION_TYPES,
+    visualization 
 }) {
+    // Don't show progress if audio is ready
+    if (visualization?.audio_url) {
+        return null;
+    }
+
     return (
         <div className="mb-8">
             <div className="flex items-center justify-between mb-4 flex-col">

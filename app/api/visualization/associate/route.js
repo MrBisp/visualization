@@ -3,75 +3,118 @@ import { getServerSession } from "next-auth/next";
 import { authOptions } from "@/app/api/auth/[...nextauth]/route";
 import { createClient } from '@supabase/supabase-js';
 
+// Create Supabase client with service role key for admin access
 const supabase = createClient(
     process.env.NEXT_PUBLIC_SUPABASE_URL,
-    process.env.SUPABASE_SERVICE_ROLE_KEY
+    process.env.SUPABASE_SERVICE_ROLE_KEY,
+    {
+        auth: {
+            persistSession: false,
+            autoRefreshToken: false,
+        }
+    }
 );
 
 export async function POST(request) {
     try {
-        // Verify user is authenticated
         const session = await getServerSession(authOptions);
-        console.log('Session:', session); // Debug log
-
-        if (!session) {
-            return NextResponse.json({ error: 'Unauthorized - No session' }, { status: 401 });
+        if (!session?.user?.id) {
+            return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
         }
 
-        // Get request body
-        const body = await request.json();
-        const { visualizationId } = body;
-
+        const { visualizationId } = await request.json();
         if (!visualizationId) {
-            return NextResponse.json({ error: 'Missing visualization ID' }, { status: 400 });
+            return NextResponse.json({ error: "Visualization ID is required" }, { status: 400 });
         }
 
-        // Get the auth user ID from the session
-        const userId = session.user.id;
-        console.log('User ID from session:', userId); // Debug log
-
-        if (!userId) {
-            return NextResponse.json({ error: 'No user ID in session' }, { status: 401 });
+        // Get the temporary visualization data from localStorage (client will send it)
+        const { data: tempData } = await request.json();
+        if (!tempData) {
+            return NextResponse.json({ error: "No visualization data provided" }, { status: 400 });
         }
 
-        // First verify the visualization exists
-        const { data: existingViz, error: fetchError } = await supabase
+        // Create a new permanent visualization
+        const { data: visualization, error: vizError } = await supabase
             .from('visualizations')
-            .select('id, user_id')
-            .eq('id', visualizationId)
+            .insert({
+                user_id: session.user.id,
+                title: tempData.title || 'Untitled Visualization',
+                description: tempData.text,
+                status: 'completed',
+                selected_voice: tempData.voice
+            })
+            .select()
             .single();
 
-        if (fetchError) {
-            console.error('Error fetching visualization:', fetchError);
-            return NextResponse.json({ error: 'Visualization not found' }, { status: 404 });
+        if (vizError) {
+            console.error('Error creating visualization:', vizError);
+            throw vizError;
         }
 
-        console.log('Existing visualization:', existingViz); // Debug log
+        // Create sections
+        if (tempData.sections) {
+            const sectionsToInsert = tempData.sections.map(section => ({
+                visualization_id: visualization.id,
+                section_type: section.section_type,
+                content: section.content,
+                sequence_order: section.sequence_order,
+                status: 'completed'
+            }));
 
-        // Update the visualization to associate it with the user
-        const { data, error } = await supabase
-            .from('visualizations')
-            .update({ user_id: userId })
-            .eq('id', visualizationId)
-            .select('id, user_id, created_at, updated_at, title, description, status, selected_voice')
-            .single();
+            const { error: sectionsError } = await supabase
+                .from('visualization_sections')
+                .insert(sectionsToInsert);
 
-        if (error) {
-            console.error('Supabase update error:', error);
-            return NextResponse.json({ 
-                error: 'Failed to update visualization',
-                details: error.message
-            }, { status: 500 });
+            if (sectionsError) {
+                console.error('Error creating sections:', sectionsError);
+                throw sectionsError;
+            }
         }
 
-        console.log('Updated visualization:', data); // Debug log
+        // If there's audio, move it from temp to permanent storage
+        if (tempData.audio_url) {
+            // Extract the temp file path from the URL
+            const urlParts = new URL(tempData.audio_url);
+            const tempPath = urlParts.pathname.split('/visualization-audio/')[1].split('?')[0];
+            
+            // Create new permanent path
+            const newPath = `visualizations/${session.user.id}/${visualization.id}.mp3`;
 
-        return NextResponse.json({ success: true, visualization: data });
+            // Move the file
+            const { error: moveError } = await supabase
+                .storage
+                .from('visualization-audio')
+                .move(tempPath, newPath);
+
+            if (moveError) {
+                console.error('Error moving audio file:', moveError);
+                throw moveError;
+            }
+
+            // Store the new path in the database
+            const { error: audioError } = await supabase
+                .from('visualization_audio')
+                .insert({
+                    visualization_id: visualization.id,
+                    storage_path: newPath
+                });
+
+            if (audioError) {
+                console.error('Error storing audio path:', audioError);
+                throw audioError;
+            }
+        }
+
+        return NextResponse.json({ 
+            success: true,
+            visualization
+        });
+
     } catch (error) {
         console.error('Error associating visualization:', error);
-        return NextResponse.json({ 
-            error: 'Internal server error',
-            details: error.message
-        }, { status: 500 });
+        return NextResponse.json(
+            { error: error.message || "Failed to associate visualization" },
+            { status: 500 }
+        );
     }
 } 

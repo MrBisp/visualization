@@ -47,8 +47,40 @@ const SECTION_PROMPTS = {
 
 export async function POST(req) {
     try {
-        const { systemPrompt, userPrompt, sectionType } = await req.json();
+        const { text, section_type, isPreview } = await req.json();
         
+        if (!text || !section_type) {
+            return NextResponse.json({ error: "Text and section type are required" }, { status: 400 });
+        }
+
+        // Get the system prompt for this section type
+        const systemPrompt = SECTION_PROMPTS[section_type];
+        if (!systemPrompt) {
+            return NextResponse.json({ error: "Invalid section type" }, { status: 400 });
+        }
+
+        // Create the user prompt
+        const userPrompt = `
+            Create a natural, flowing visualization script that:
+            - Uses present tense
+            - Speaks directly to the listener with I-language (e.g. "I am walking into the room" instead of "You are walking into the room")
+            - Includes appropriate pauses (mark them with [...])
+            - Uses concrete, specific language
+            - Avoids complex metaphors
+            - Maintains a professional, warm tone
+            
+            The script should feel natural when spoken and help the listener fully immerse in the visualization.
+            
+            Format the response with:
+            - Clear paragraphs
+            - [...] for pauses
+            - No special characters that might interfere with text-to-speech
+            - Notice that you will only write some of the content, meaning that before and after the content, other text will be added. Therefore it is important not to write anything like: "Here you go" or anything like that, as it will interrupt the flow of the script. 
+            - Also, only focus on the part you are asked to write, and do not write anything else.
+            ${isPreview ? '- Keep the content concise as this is a preview.' : ''}
+            
+            Based on this scenario: "${text}"`;
+
         const completion = await openai.chat.completions.create({
             model: "gpt-4",
             messages: [
@@ -56,12 +88,12 @@ export async function POST(req) {
                 { role: "user", content: userPrompt }
             ],
             temperature: 0.7,
-            max_tokens: 1500,
+            max_tokens: isPreview ? 750 : 1500,
         });
 
         return NextResponse.json({ 
             content: completion.choices[0].message.content,
-            sectionType 
+            sectionType: section_type
         });
     } catch (error) {
         console.error('Section generation error:', error);

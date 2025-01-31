@@ -77,19 +77,11 @@ function VisualizationCard({ visualization }) {
                 </span>
             </div>
 
-            {visualization.has_audio && (
-                <div className="mt-4">
-                    <AudioPlayer 
-                        visualizationId={visualization.id}
-                    />
-                </div>
-            )}
-
             <div className="flex flex-wrap gap-2">
                 {visualization.status === 'completed' ? (
                     <>
                         <Link 
-                            href={`/visualization/${visualization.id}`}
+                            href={`/dashboard/visualizations/${visualization.id}`}
                             className="btn btn-primary btn-sm"
                         >
                             View Visualization

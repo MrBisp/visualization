@@ -10,8 +10,11 @@ const nextConfig = {
         protocol: 'https',
         hostname: 'www.google.com',
       },
-      // ... any other patterns you need
+
     ],
+  },
+  serverRuntimeConfig: {
+    apiTimeout: 10000
   },
 };
 

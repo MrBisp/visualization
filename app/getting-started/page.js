@@ -122,50 +122,46 @@ const GettingStarted = () => {
         try {
             setGenerationStep(1);
             
-            // Get the latest session data first
-            const currentSession = await fetch('/api/auth/session').then(res => res.json());
-            console.log('Current session:', currentSession); // Debug log
+            let visualization;
             
-            // Get user ID from session, making sure we're getting the correct ID
-            const userId = currentSession?.user?.id;
-            console.log('User ID:', userId); // Debug log
-            
-            if (userId) {
-                // Verify user exists in public.users table
-                const userCheckResponse = await fetch('/api/auth/check', {
-                    method: 'GET',
-                    headers: {
-                        'Content-Type': 'application/json',
-                    }
+            if (session?.user?.id) {
+                // For logged-in users, save to database
+                visualization = await initializeVisualization({ 
+                    text: visualizationText,
+                    voiceId: getOpenAIVoiceId(selectedVoice),
+                    userId: session.user.id
                 });
-                
-                if (!userCheckResponse.ok) {
-                    throw new Error('User not found in database');
+
+                if (!visualization?.id) {
+                    throw new Error('Failed to create visualization');
                 }
+
+                // Save to localStorage before redirect
+                localStorage.setItem('current_visualization', JSON.stringify({
+                    id: visualization.id,
+                    text: visualizationText,
+                    voice: selectedVoice,
+                    created_at: new Date().toISOString()
+                }));
+
+                router.push(`/generation/${visualization.id}`);
+            } else {
+                // For non-logged-in users, store in localStorage only
+                const tempId = 'temp-' + Date.now();
+                localStorage.setItem('current_visualization', JSON.stringify({
+                    id: tempId,
+                    text: visualizationText,
+                    voice: selectedVoice,
+                    created_at: new Date().toISOString(),
+                    isTemporary: true
+                }));
+
+                router.push(`/generation/${tempId}`);
             }
-            
-            // Initialize visualization in DB
-            const visualization = await initializeVisualization({ 
-                text: visualizationText,
-                voiceId: getOpenAIVoiceId(selectedVoice),
-                userId: userId // Pass the user ID if available
-            });
 
-            console.log('Visualization created:', visualization.id);
-            
-            // Save to localStorage before redirect
-            localStorage.setItem('current_visualization', JSON.stringify({
-                id: visualization.id,
-                text: visualizationText,
-                voice: selectedVoice,
-                created_at: new Date().toISOString()
-            }));
-
-            // No need to associate the visualization separately since we're creating it with the user ID
-            router.push(`/generation/${visualization.id}`);
         } catch (error) {
             console.error('Generation error:', error);
-            toast.error('Failed to start generation');
+            toast.error("Failed to start generation. Please try again.");
             setGenerationStep(0);
         }
     };
@@ -341,7 +337,7 @@ const GettingStarted = () => {
                 <div className="w-full flex justify-center sm:justify-end">
                     {step === 1 ? (
                         <button 
-                            className="btn btn-primary w-full sm:w-auto sm:btn-wide"
+                            className="btn btn-primary w-full sm:btn-wide"
                             onClick={() => setStep(2)}
                             disabled={!visualizationText.trim()}
                         >
@@ -349,7 +345,7 @@ const GettingStarted = () => {
                         </button>
                     ) : step === 2 ? (
                         <button 
-                            className="btn btn-primary w-full sm:w-auto sm:btn-wide"
+                            className="btn btn-primary w-full sm:btn-wide"
                             onClick={() => {
                                 if (environmentText.trim()) {
                                     setVisualizationText(visualizationText + "\n\nEnvironment for practice:\n" + environmentText);

@@ -5,7 +5,6 @@ import { useRouter } from 'next/navigation';
 import { useSession } from "next-auth/react";
 import { toast } from 'react-hot-toast';
 import AudioPlayer from '@/components/AudioPlayer';
-import { SECTION_TYPES } from '@/app/services/visualizationService';
 
 export default function VisualizationPage({ params }) {
     const router = useRouter();
@@ -15,17 +14,22 @@ export default function VisualizationPage({ params }) {
     const [isLoading, setIsLoading] = useState(true);
     const [isEditing, setIsEditing] = useState(false);
     const [newTitle, setNewTitle] = useState('');
-    const [showScript, setShowScript] = useState(false);
     const [isGeneratingAudio, setIsGeneratingAudio] = useState(false);
 
     useEffect(() => {
         const fetchVisualization = async () => {
             try {
+                console.log('Fetching visualization:', id);
                 const response = await fetch(`/api/visualization/${id}`);
+                
                 if (!response.ok) {
-                    throw new Error('Failed to fetch visualization');
+                    const errorData = await response.json();
+                    console.error('Server error:', errorData);
+                    throw new Error(errorData.error || 'Failed to fetch visualization');
                 }
+                
                 const data = await response.json();
+                console.log('Visualization data:', data);
                 setVisualization(data);
                 setNewTitle(data.title || '');
             } catch (error) {
@@ -139,7 +143,7 @@ export default function VisualizationPage({ params }) {
     }
 
     return (
-        <div className="min-h-screen p-8 bg-gray-50">
+        <div className="min-h-screen p-8">
             <div className="max-w-3xl mx-auto">
                 {/* Mobile Back Button */}
                 <button 
@@ -232,7 +236,7 @@ export default function VisualizationPage({ params }) {
                             audioUrl={visualization.audio_url}
                         />
                     ) : (
-                        <div className="bg-white rounded-lg shadow-sm p-6">
+                        <div className="rounded-lg shadow-sm p-6">
                             <div className="space-y-4">
                                 <p className="text-gray-600">
                                     No audio visualization available yet. Would you like to generate one?
@@ -267,38 +271,6 @@ export default function VisualizationPage({ params }) {
                 {visualization.description && (
                     <p className="text-gray-600 mb-8">{visualization.description}</p>
                 )}
-
-                <div className="space-y-4">
-                    <div className="flex justify-between items-center">
-                        <h2 className="text-xl font-semibold">Visualization Script</h2>
-                        <button 
-                            onClick={() => setShowScript(!showScript)}
-                            className="btn btn-ghost btn-sm"
-                        >
-                            {showScript ? 'Hide Script' : 'Show Script'}
-                        </button>
-                    </div>
-                    
-                    {showScript && (
-                        <div className="space-y-8">
-                            {visualization.sections?.map((section) => (
-                                <div 
-                                    key={section.section_type}
-                                    className="bg-white rounded-lg shadow-sm p-6"
-                                >
-                                    <h3 className="text-lg font-medium mb-4">
-                                        {section.section_type.split('_').map(word => 
-                                            word.charAt(0).toUpperCase() + word.slice(1)
-                                        ).join(' ')}
-                                    </h3>
-                                    <p className="text-gray-600 whitespace-pre-wrap">
-                                        {section.content}
-                                    </p>
-                                </div>
-                            ))}
-                        </div>
-                    )}
-                </div>
             </div>
         </div>
     );

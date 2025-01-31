@@ -3,63 +3,76 @@ import { NextResponse } from 'next/server';
 import { getServerSession } from "next-auth";
 import { authOptions } from "@/libs/next-auth";
 
+// Create Supabase client with service role key for admin access
 const supabase = createClient(
     process.env.NEXT_PUBLIC_SUPABASE_URL,
-    process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY
+    process.env.SUPABASE_SERVICE_ROLE_KEY,
+    {
+        auth: {
+            persistSession: false,
+            autoRefreshToken: false,
+        }
+    }
 );
 
 export async function GET(request, { params }) {
     try {
+        console.log('GET /api/visualization/[id] route hit');
+        
         const session = await getServerSession(authOptions);
         if (!session) {
+            console.log('No session found');
             return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
         }
 
         const { id } = params;
 
-        // First fetch just the visualization and audio to check existence and access
-        const { data: basicData, error: basicError } = await supabase
+        console.log('Visualization ID:', id);
+        console.log('User ID:', session.user.id);
+        
+        const { data: visualizationData, error: vizError } = await supabase
             .from('visualizations')
-            .select(`
-                *,
-                visualization_audio(audio_url)
-            `)
+            .select('*')
             .eq('id', id)
             .eq('user_id', session.user.id)
             .single();
 
-        if (basicError) {
-            console.error('Error fetching basic visualization data:', basicError);
-            return NextResponse.json({ 
-                error: 'Failed to fetch visualization',
-                details: basicError.message 
-            }, { status: 500 });
+        if (vizError) {
+            console.error('Error fetching visualization metadata:', vizError);
+            return NextResponse.json({ error: 'Failed to fetch visualization' }, { status: 500 });
         }
 
-        if (!basicData) {
-            return NextResponse.json({ error: 'Visualization not found' }, { status: 404 });
-        }
-
-        // Then fetch the sections in a separate query
-        const { data: sections, error: sectionsError } = await supabase
-            .from('visualization_sections')
-            .select('*')
+        // Fetch audio separately
+        const { data: audioData, error: audioError } = await supabase
+            .from('visualization_audio')
+            .select('storage_path')
             .eq('visualization_id', id)
-            .order('sequence_order', { ascending: true });
+            .limit(1)
+            .single({ timeout: 10000 });
 
-        if (sectionsError) {
-            console.error('Error fetching sections:', sectionsError);
-            return NextResponse.json({ 
-                error: 'Failed to fetch visualization sections',
-                details: sectionsError.message 
-            }, { status: 500 });
+        if (audioError) {
+            console.error('Error fetching audio:', audioError);
+        }
+
+        // Get a signed URL if we have a storage path (valid for 1 hour)
+        let audioUrl = null;
+        if (audioData?.storage_path) {
+            const { data: { signedUrl }, error: signedUrlError } = await supabase
+                .storage
+                .from('visualization-audio')
+                .createSignedUrl(audioData.storage_path, 3600);
+
+            if (signedUrlError) {
+                console.error('Error creating signed URL:', signedUrlError);
+            } else {
+                audioUrl = signedUrl;
+            }
         }
 
         // Construct the final response
         const visualization = {
-            ...basicData,
-            sections: sections || [],
-            audio_url: basicData.visualization_audio?.[0]?.audio_url
+            ...visualizationData,
+            audio_url: audioUrl
         };
 
         // Clean up the response
@@ -70,7 +83,8 @@ export async function GET(request, { params }) {
         console.error('Error in GET /api/visualization/[id]:', error);
         return NextResponse.json({ 
             error: 'Internal server error',
-            details: error.message 
+            details: error.message,
+            stack: process.env.NODE_ENV === 'development' ? error.stack : undefined
         }, { status: 500 });
     }
 }

@@ -1,5 +1,6 @@
 import { createClient } from '@supabase/supabase-js';
 
+// Create Supabase client with anon key for client-side operations
 const supabase = createClient(
   process.env.NEXT_PUBLIC_SUPABASE_URL,
   process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY
@@ -362,34 +363,113 @@ export async function updateSectionStatus(visualizationId, sectionType, status) 
   if (error) throw error;
 }
 
+// Helper function to get audio URL through server API
+async function getAudioUrl(visualizationId) {
+  try {
+    const response = await fetch(`/api/visualization/audio?id=${visualizationId}`);
+    if (!response.ok) {
+      throw new Error('Failed to fetch audio URL');
+    }
+    const data = await response.json();
+    return data.audio_url;
+  } catch (error) {
+    console.error('Error fetching audio URL:', error);
+    throw error;
+  }
+}
+
 export async function completeVisualization(id) {
+    console.log('Completing visualization:', id);
     try {
-        console.log('Completing visualization:', id);
-        const response = await fetch(`${window.location.origin}/api/generation/complete`, {
+        // Get all sections in order
+        const { data: sections, error: sectionsError } = await supabase
+            .from('visualization_sections')
+            .select('*')
+            .eq('visualization_id', id)
+            .order('sequence_order');
+
+        if (sectionsError) throw sectionsError;
+
+        // Get the visualization for voice selection
+        const { data: visualization, error: vizError } = await supabase
+            .from('visualizations')
+            .select('*')
+            .eq('id', id)
+            .single();
+
+        if (vizError) throw vizError;
+
+        // Combine all section content
+        const combinedText = sections
+            .map(section => section.content)
+            .join('\n\n');
+
+        // Generate audio using OpenAI
+        const response = await fetch('/api/generation/complete', {
             method: 'POST',
             headers: {
                 'Content-Type': 'application/json',
             },
-            body: JSON.stringify({ id })
+            body: JSON.stringify({
+                id: id,
+                text: combinedText,
+                voice: visualization.selected_voice
+            }),
         });
 
-        // For non-JSON responses (like 404 HTML), this will give us the raw text
-        const responseText = await response.text();
-        let data;
-        try {
-            data = JSON.parse(responseText);
-        } catch (parseError) {
-            console.error('Failed to parse response:', responseText);
-            throw new Error(`Invalid response from server: ${responseText.substring(0, 100)}...`);
-        }
-
         if (!response.ok) {
-            throw new Error(data.error || `Server error: ${response.status} ${response.statusText}`);
+            const errorData = await response.json();
+            throw new Error(errorData.error || 'Failed to generate audio');
         }
 
-        return data.visualization;
+        const data = await response.json();
+        
+        // Get the audio URL through the server API
+        const audioUrl = await getAudioUrl(id);
+
+        // Update visualization status
+        const { error: updateError } = await supabase
+            .from('visualizations')
+            .update({ 
+                status: 'completed',
+                updated_at: new Date().toISOString()
+            })
+            .eq('id', id);
+
+        if (updateError) throw updateError;
+
+        return { success: true, audio_url: audioUrl };
     } catch (error) {
         console.error('Error completing visualization:', error);
+        throw error;
+    }
+}
+
+// For temporary (non-logged-in) visualizations
+export async function completeTempVisualization(id, text, voice) {
+    try {
+        // Generate audio using OpenAI
+        const response = await fetch('/api/generation/complete-temp', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+            },
+            body: JSON.stringify({
+                id,
+                text,
+                voice
+            }),
+        });
+
+        if (!response.ok) {
+            const errorData = await response.json();
+            throw new Error(errorData.error || 'Failed to generate audio');
+        }
+
+        const data = await response.json();
+        return { success: true, audio_url: data.audio_url };
+    } catch (error) {
+        console.error('Error completing temporary visualization:', error);
         throw error;
     }
 } 

@@ -9,7 +9,7 @@ import Image from "next/image";
 function LoginContent() {
     const router = useRouter();
     const searchParams = useSearchParams();
-    const callbackUrl = searchParams.get('callbackUrl') || '/dashboard';
+    const callbackUrl = searchParams.get('callbackUrl') || '/dashboard/visualizations';
     const [isLoading, setIsLoading] = useState(false);
     const [formData, setFormData] = useState({
         email: "",

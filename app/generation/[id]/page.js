@@ -9,6 +9,8 @@ import VisualizationProgress from '@/components/VisualizationProgress';
 import AudioSection from '@/components/AudioSection';
 import ButtonSignin from '@/components/ButtonSignin';
 import RegisterForm from '@/components/RegisterForm';
+import { toast } from 'react-hot-toast';
+import { completeTempVisualization } from '@/app/services/visualizationService';
 
 export default function GenerationPage({ params }) {
     const router = useRouter();
@@ -118,9 +120,34 @@ export default function GenerationPage({ params }) {
                     return;
                 }
 
+                // Initialize sections if this is a temporary visualization
+                if (id.startsWith('temp-') && !data.sections) {
+                    data.sections = Object.values(SECTION_TYPES).map((type, index) => ({
+                        id: `temp-section-${index}`,
+                        section_type: type,
+                        status: 'pending',
+                        sequence_order: index,
+                        content: ''
+                    }));
+                }
+
                 if (mounted) {
                     setVisualization(data);
-                    await startGeneration();
+                    if (data.sections) {
+                        const newProgress = data.sections.reduce((acc, section) => ({
+                            ...acc,
+                            [section.section_type]: section.status
+                        }), {});
+                        setProgress(newProgress);
+
+                        // Only start generation if not all sections are completed
+                        const allCompleted = Object.values(newProgress).every(status => status === 'completed');
+                        if (!allCompleted) {
+                            await startGeneration();
+                        }
+                    } else {
+                        await startGeneration();
+                    }
                 }
             } catch (error) {
                 if (mounted) {
@@ -136,6 +163,15 @@ export default function GenerationPage({ params }) {
             mounted = false;
         };
     }, [id, isDebugMode]);
+
+    // Add cleanup effect for generation flag
+    useEffect(() => {
+        return () => {
+            // Clean up generation in progress flag on unmount
+            const generationKey = `generation_in_progress_${id}`;
+            localStorage.removeItem(generationKey);
+        };
+    }, [id]);
 
     // Update loading message every 3 seconds
     useEffect(() => {
@@ -173,6 +209,13 @@ export default function GenerationPage({ params }) {
     };
 
     const startGeneration = async () => {
+        // Clear any stale generation flag
+        const generationKey = `generation_in_progress_${id}`;
+        if (localStorage.getItem(generationKey)) {
+            console.log('Clearing stale generation flag');
+            localStorage.removeItem(generationKey);
+        }
+
         await handleGeneration({
             id,
             isDebugMode,
@@ -186,6 +229,48 @@ export default function GenerationPage({ params }) {
         });
     };
 
+    const handleAudioGeneration = async () => {
+        if (!visualization || isGeneratingAudio) return;
+
+        setIsGeneratingAudio(true);
+        try {
+            // For temporary visualizations
+            if (visualization.id.startsWith('temp-')) {
+                const result = await completeTempVisualization(
+                    visualization.id,
+                    visualization.text,
+                    visualization.selected_voice || 'alloy'
+                );
+                setVisualization(prev => ({
+                    ...prev,
+                    audio_url: result.audio_url
+                }));
+            } else {
+                // For logged-in users
+                const response = await fetch('/api/generation/complete', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                    },
+                    body: JSON.stringify({ id: visualization.id }),
+                });
+
+                if (!response.ok) throw new Error('Failed to generate audio');
+
+                const data = await response.json();
+                setVisualization(prev => ({
+                    ...prev,
+                    audio_url: data.audio_url
+                }));
+            }
+        } catch (error) {
+            console.error('Audio generation error:', error);
+            toast.error('Failed to generate audio');
+        } finally {
+            setIsGeneratingAudio(false);
+        }
+    };
+
     // Handle successful registration
     const handleRegistrationSuccess = async () => {
         try {
@@ -195,6 +280,14 @@ export default function GenerationPage({ params }) {
             // Wait a bit to ensure session is updated
             await new Promise(resolve => setTimeout(resolve, 500));
 
+            // Get the temporary visualization data
+            const savedData = localStorage.getItem('current_visualization');
+            if (!savedData) {
+                throw new Error('No visualization data found');
+            }
+
+            const tempData = JSON.parse(savedData);
+
             // Make API call to associate visualization with user
             const response = await fetch('/api/visualization/associate', {
                 method: 'POST',
@@ -202,7 +295,8 @@ export default function GenerationPage({ params }) {
                     'Content-Type': 'application/json',
                 },
                 body: JSON.stringify({
-                    visualizationId: id
+                    visualizationId: id,
+                    data: tempData
                 }),
             });
 
@@ -210,6 +304,9 @@ export default function GenerationPage({ params }) {
                 const data = await response.json();
                 throw new Error(data.error || 'Failed to associate visualization with user');
             }
+
+            // Clear the temporary data
+            localStorage.removeItem('current_visualization');
 
             // Refresh the router to update the UI
             router.refresh();
@@ -247,6 +344,7 @@ export default function GenerationPage({ params }) {
                     isGeneratingAudio={isGeneratingAudio}
                     getCurrentMessage={getCurrentMessage}
                     SECTION_TYPES={SECTION_TYPES}
+                    visualization={visualization}
                 />
 
                 <AudioSection 
@@ -282,14 +380,12 @@ export default function GenerationPage({ params }) {
                 )}
 
                 {!session && (
-                    <div className="mt-8 border p-6 rounded-lg" style={{ backgroundColor: "rgba(247, 228, 210, 0.1)" }}>
-                        <p className="text-gray-600 mb-4">
+                    <div className="mt-8 border p-6 rounded-lg text-gray-600" style={{ backgroundColor: "rgba(247, 228, 210, 0.1)" }}>
                             Your visualization is being generated and will take about 3-4 minutes to complete. Sign up now to:
                             <ul className="list-disc ml-6 mt-2">
                                 <li>Save this visualization to your account automatically</li>
                                 <li>Access your visualization anytime</li>
                             </ul>
-                        </p>
 
                         <div className="flex flex-col items-center">
                             <h3 className="text-xl font-bold mb-4">Sign up for free</h3>
