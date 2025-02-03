@@ -1,23 +1,56 @@
-import config from "@/config";
-import ButtonCheckout from "./ButtonCheckout";
+import ButtonCheckoutFakeDoor from "./ButtonCheckoutFakeDoor";
+
+const plans = [
+  {
+    name: "Starter Pack",
+    description: "Perfect for trying out our AI visualizations",
+    price: 10,
+    priceId: "starter-10",
+    features: [
+      { name: "10 AI-generated visualization audio files" },
+      { name: "High-quality audio generation" },
+      { name: "Access to all visualization types" },
+      { name: "Download your audio files" },
+      { name: "Valid for 1 year" },
+    ],
+  },
+  {
+    name: "Pro Pack",
+    description: "Best value for serious users",
+    price: 50,
+    priceId: "pro-50",
+    isFeatured: true,
+    features: [
+      { name: "100 AI-generated visualization audio files" },
+      { name: "High-quality audio generation" },
+      { name: "Access to all visualization types" },
+      { name: "Download your audio files" },
+      { name: "Priority support" },
+      { name: "Valid for 1 year" },
+    ],
+  },
+];
 
 // <Pricing/> displays the pricing plans for your app
 // It's your Stripe config in config.js.stripe.plans[] that will be used to display the plans
-// <ButtonCheckout /> renders a button that will redirect the user to Stripe checkout called the /api/stripe/create-checkout API endpoint with the correct priceId
+// <ButtonCheckoutFakeDoor /> renders a button that will show an email collection form when clicked
 
 const Pricing = () => {
   return (
-    <section className="bg-base-200 overflow-hidden" id="pricing">
+    <section className="" id="pricing" style={{ backgroundColor: "rgba(0, 0, 0, 0.05)" }}>
       <div className="py-24 px-8 max-w-5xl mx-auto">
         <div className="flex flex-col text-center w-full mb-20">
           <p className="font-medium text-primary mb-8">Pricing</p>
           <h2 className="font-bold text-3xl lg:text-5xl tracking-tight">
-            Regain control of your life
+            Choose Your Visualization Package
           </h2>
+          <p className="mt-4 text-xl text-base-content/80">
+            Get started with our affordable plans and transform your mindset
+          </p>
         </div>
 
         <div className="relative flex justify-center flex-col lg:flex-row items-center lg:items-stretch gap-8">
-          {config.stripe.plans.map((plan) => (
+          {plans.map((plan) => (
             <div key={plan.priceId} className="relative w-full max-w-lg">
               {plan.isFeatured && (
                 <div className="absolute top-0 left-1/2 -translate-x-1/2 -translate-y-1/2 z-20">
@@ -46,21 +79,11 @@ const Pricing = () => {
                     )}
                   </div>
                 </div>
-                <div className="flex gap-2">
-                  {plan.priceAnchor && (
-                    <div className="flex flex-col justify-end mb-[4px] text-lg ">
-                      <p className="relative">
-                        <span className="absolute bg-base-content h-[1.5px] inset-x-0 top-[53%]"></span>
-                        <span className="text-base-content/80">
-                          ${plan.priceAnchor}
-                        </span>
-                      </p>
-                    </div>
-                  )}
+                <div className="flex items-end gap-2">
                   <p className={`text-5xl tracking-tight font-extrabold`}>
                     ${plan.price}
                   </p>
-                  <div className="flex flex-col justify-end mb-[4px]">
+                  <div className="flex flex-col justify-end mb-2">
                     <p className="text-xs text-base-content/60 uppercase font-semibold">
                       USD
                     </p>
@@ -82,14 +105,17 @@ const Pricing = () => {
                             clipRule="evenodd"
                           />
                         </svg>
-
-                        <span>{feature.name} </span>
+                        <span>{feature.name}</span>
                       </li>
                     ))}
                   </ul>
                 )}
                 <div className="space-y-2">
-                  <ButtonCheckout priceId={plan.priceId} />
+                  <ButtonCheckoutFakeDoor 
+                    priceId={plan.priceId} 
+                    planName={plan.name}
+                    price={plan.price}
+                  />
                 </div>
               </div>
             </div>

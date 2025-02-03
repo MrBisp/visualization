@@ -74,45 +74,29 @@ export default function VisualizationPage({ params }) {
 
     const generateAudio = async () => {
         if (!visualization || isGeneratingAudio) return;
+        
+        // Redirect to pricing page
+        router.push('/#pricing');
+        return;
 
-        // Check if audio already exists either in localStorage or as a URL
-        const audioGeneratedKey = `audio_generated_${visualization.id}`;
-        // Only skip if we have a full version, allow regeneration if we have a temp version
-        if ((localStorage.getItem(audioGeneratedKey) || visualization.audio_url) && visualization.audio_type === 'full') {
-            console.log('Full audio version already exists, skipping');
-            return;
-        }
-
+        /* Original code commented out for future restoration
         setIsGeneratingAudio(true);
         try {
             // For temporary visualizations
             if (visualization.id.startsWith('temp-')) {
-                const result = await completeTempVisualization(
-                    visualization.id,
-                    visualization.text,
-                    visualization.selected_voice || 'alloy'
-                );
-                
+                const response = await completeTempVisualization({
+                    text: visualization.description,
+                    voice: getOpenAIVoiceId(visualization.selected_voice) || 'alloy'
+                });
+
+                if (!response.ok) throw new Error('Failed to generate audio');
+
+                const data = await response.json();
                 setVisualization(prev => ({
                     ...prev,
-                    audio_url: result.audio_url
+                    audio_url: data.audio_url,
+                    audio_type: 'temp'
                 }));
-
-                // Set the audio generated flag for temporary visualizations
-                localStorage.setItem(audioGeneratedKey, 'true');
-
-                // Show expiration notice
-                toast(
-                    <div>
-                        Your audio will be available for 1 hour. 
-                        <br />
-                        <span className="font-semibold">Sign in to save it permanently!</span>
-                    </div>, 
-                    {
-                        duration: 6000,
-                        icon: '⏳'
-                    }
-                );
             } else {
                 // For logged-in users
                 const response = await fetch('/api/generation/complete', {
@@ -148,6 +132,7 @@ export default function VisualizationPage({ params }) {
         } finally {
             setIsGeneratingAudio(false);
         }
+        */
     };
 
     if (isLoading) {

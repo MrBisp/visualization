@@ -178,7 +178,7 @@ export default function VisualizationsPage() {
             <div className="flex flex-col sm:flex-row sm:justify-between sm:items-center gap-4 mb-8">
                 <h1 className="text-2xl font-bold text-gray-900">My Visualizations</h1>
                 <Link 
-                    href="/getting-started" 
+                    href="/#pricing" 
                     className="btn btn-primary w-full sm:w-auto"
                 >
                     Create New Visualization
@@ -194,7 +194,7 @@ export default function VisualizationsPage() {
                         Create your first visualization to get started
                     </p>
                     <Link 
-                        href="/getting-started" 
+                        href="/#pricing" 
                         className="btn btn-primary"
                     >
                         Create Your First Visualization
