@@ -44,9 +44,10 @@ CREATE TABLE visualization_sections (
 CREATE TABLE visualization_audio (
   id uuid DEFAULT uuid_generate_v4() PRIMARY KEY,
   visualization_id uuid REFERENCES visualizations(id) ON DELETE CASCADE,
-  storage_path text, -- Now storing the file path instead of full audio data
+  storage_path text,
   duration integer,
-  created_at timestamp with time zone DEFAULT timezone('utc'::text, now()) NOT NULL
+  created_at timestamp with time zone DEFAULT timezone('utc'::text, now()) NOT NULL,
+  audio_type text NOT NULL CHECK (audio_type IN ('temp', 'preview', 'full'))
 );
 
 -- Create updated_at trigger

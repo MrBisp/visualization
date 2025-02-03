@@ -3,6 +3,7 @@ import { createClient } from '@supabase/supabase-js';
 import { getServerSession } from "next-auth";
 import { authOptions } from "@/libs/next-auth";
 import OpenAI from "openai";
+import { getOpenAIVoiceId } from "@/app/constants/voices";
 
 const openai = new OpenAI();
 
@@ -19,6 +20,26 @@ const supabase = createClient(
 );
 
 const MAX_TTS_LENGTH = 4000; // Slightly less than 4096 to be safe
+
+// Add retry helper at the top
+async function retryOperation(operation, maxRetries = 3) {
+    for (let attempt = 1; attempt <= maxRetries; attempt++) {
+        try {
+            return await operation();
+        } catch (error) {
+            if (attempt === maxRetries) throw error;
+            
+            // Only retry on connection/stream errors
+            if (!error.code?.includes('STREAM') && !error.code?.includes('ECONNRESET')) {
+                throw error;
+            }
+
+            const delay = Math.min(1000 * Math.pow(2, attempt), 8000);
+            console.log(`Attempt ${attempt} failed, retrying in ${delay}ms...`);
+            await new Promise(resolve => setTimeout(resolve, delay));
+        }
+    }
+}
 
 // Helper function to split text into chunks that respect sentence boundaries
 function splitTextIntoChunks(text, maxLength) {
@@ -65,7 +86,7 @@ export async function POST(request) {
     console.log('Complete visualization API route hit');
     try {
         const body = await request.json();
-        const { id } = body;
+        const { id, text, voice } = body;
         
         if (!id) {
             console.error('No visualization ID provided');
@@ -74,9 +95,94 @@ export async function POST(request) {
 
         // Get the current session to check if user is logged in
         const session = await getServerSession(authOptions);
-        console.log('User session:', session?.user?.email || 'No session');
+        if (!session?.user) {
+            return NextResponse.json({ error: "Unauthorized - must be logged in" }, { status: 401 });
+        }
+        console.log('User session:', session.user.email);
 
-        // First, get all completed sections to generate TTS
+        // If text and voice are provided, this is a conversion from preview to full version
+        if (text && voice) {
+            // Split text into chunks that respect the TTS character limit
+            const textChunks = splitTextIntoChunks(text, MAX_TTS_LENGTH);
+            console.log(`Split text into ${textChunks.length} chunks`);
+
+            // Generate TTS for each chunk in parallel
+            const audioChunksPromises = textChunks.map(async (chunk, i) => {
+                console.log(`Starting audio chunk ${i + 1} of ${textChunks.length}`);
+                const openAIVoice = getOpenAIVoiceId(voice) || 'alloy';
+                
+                const generateChunk = async () => {
+                    const mp3 = await openai.audio.speech.create({
+                        model: "tts-1",
+                        voice: openAIVoice,
+                        input: chunk,
+                    });
+                    return Buffer.from(await mp3.arrayBuffer());
+                };
+
+                const buffer = await retryOperation(generateChunk);
+                console.log(`Completed audio chunk ${i + 1} of ${textChunks.length}`);
+                return buffer;
+            });
+
+            // Wait for all chunks to complete
+            const audioChunks = await Promise.all(audioChunksPromises);
+            console.log('All audio chunks generated successfully');
+
+            // Combine all audio chunks into a single buffer
+            const combinedBuffer = Buffer.concat(audioChunks);
+            
+            // Generate a unique filename for storage
+            const fileName = `${id}/${Date.now()}.mp3`;
+            const filePath = `visualizations/${session.user.id}/${fileName}`;
+
+            // Upload the audio file to Supabase Storage
+            const { data: storageData, error: storageError } = await supabase
+                .storage
+                .from('visualization-audio')
+                .upload(filePath, combinedBuffer, {
+                    contentType: 'audio/mp3',
+                    cacheControl: '3600'
+                });
+
+            if (storageError) {
+                console.error('Error uploading to storage:', storageError);
+                throw storageError;
+            }
+
+            // Get a signed URL that expires in 1 hour
+            const { data: { signedUrl }, error: signedUrlError } = await supabase
+                .storage
+                .from('visualization-audio')
+                .createSignedUrl(filePath, 3600);
+
+            if (signedUrlError) {
+                console.error('Error creating signed URL:', signedUrlError);
+                throw signedUrlError;
+            }
+
+            // Store the file path in the database
+            const { error: audioError } = await supabase
+                .from('visualization_audio')
+                .insert({
+                    visualization_id: id,
+                    storage_path: filePath,
+                    created_at: new Date().toISOString(),
+                    audio_type: 'full'
+                });
+
+            if (audioError) {
+                console.error('Error storing audio path:', audioError);
+                throw audioError;
+            }
+
+            return NextResponse.json({ 
+                success: true,
+                audio_url: signedUrl
+            });
+        }
+
+        // Regular flow for generating audio from sections
         const { data: visualization, error: fetchError } = await supabase
             .from('visualizations')
             .select(`
@@ -113,14 +219,19 @@ export async function POST(request) {
         // Generate TTS for each chunk in parallel
         const audioChunksPromises = textChunks.map(async (chunk, i) => {
             console.log(`Starting audio chunk ${i + 1} of ${textChunks.length}`);
-            const mp3 = await openai.audio.speech.create({
-                model: "tts-1",
-                voice: visualization.selected_voice,
-                input: chunk,
-            });
-            const buffer = Buffer.from(await mp3.arrayBuffer());
-            console.log(`Completed audio chunk ${i + 1} of ${textChunks.length}`);
+            const openAIVoice = getOpenAIVoiceId(visualization.selected_voice) || 'alloy';
             
+            const generateChunk = async () => {
+                const mp3 = await openai.audio.speech.create({
+                    model: "tts-1",
+                    voice: openAIVoice,
+                    input: chunk,
+                });
+                return Buffer.from(await mp3.arrayBuffer());
+            };
+
+            const buffer = await retryOperation(generateChunk);
+            console.log(`Completed audio chunk ${i + 1} of ${textChunks.length}`);
             return buffer;
         });
 
@@ -172,7 +283,8 @@ export async function POST(request) {
             .insert({
                 visualization_id: id,
                 storage_path: filePath,
-                created_at: new Date().toISOString()
+                created_at: new Date().toISOString(),
+                audio_type: 'full'
             });
 
         if (audioError) {

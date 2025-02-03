@@ -5,7 +5,7 @@ import { authOptions } from "@/libs/next-auth";
 
 const supabase = createClient(
     process.env.NEXT_PUBLIC_SUPABASE_URL,
-    process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY,
+    process.env.SUPABASE_SERVICE_ROLE_KEY,
     {
         db: {
             schema: 'public'
@@ -14,7 +14,8 @@ const supabase = createClient(
             headers: { 'x-my-custom-header': 'visualization-audio' },
         },
         auth: {
-            persistSession: false
+            persistSession: false,
+            autoRefreshToken: false,
         }
     }
 );
@@ -43,33 +44,44 @@ async function fetchWithRetry(id, userId, retryCount = 0) {
         clearTimeout(timeoutId);
 
         if (audioError) {
-            // If it's a timeout error and we haven't exceeded retries, try again
-            if ((audioError.code === '57014' || audioError.message?.includes('timeout')) && retryCount < maxRetries) {
-                // Add exponential backoff
-                const backoffTime = Math.min(1000 * Math.pow(2, retryCount), 8000);
-                console.log(`Waiting ${backoffTime}ms before retry ${retryCount + 1}...`);
-                await new Promise(resolve => setTimeout(resolve, backoffTime));
-                
-                console.log(`Retry ${retryCount + 1} for audio fetch...`);
-                return await fetchWithRetry(id, userId, retryCount + 1);
-            }
+            console.error('Error fetching audio data:', audioError);
             throw audioError;
         }
 
         // If no data or wrong user, return null
         if (!audioData || audioData.visualization.user_id !== userId) {
+            console.log('No audio data found or unauthorized access');
             return null;
         }
 
-        const { data: { publicUrl } } = supabase
+        if (!audioData.storage_path) {
+            console.error('No storage path found in audio data');
+            return null;
+        }
+
+        console.log('Found audio data:', { storage_path: audioData.storage_path });
+
+        // Create signed URL with error handling
+        const signedUrlResponse = await supabase
             .storage
             .from('visualization-audio')
-            .getPublicUrl(audioData.storage_path);
+            .createSignedUrl(audioData.storage_path, 3600);
+
+        if (signedUrlResponse.error) {
+            console.error('Error creating signed URL:', signedUrlResponse.error);
+            throw signedUrlResponse.error;
+        }
+
+        if (!signedUrlResponse.data?.signedUrl) {
+            console.error('No signed URL in response:', signedUrlResponse);
+            throw new Error('Failed to generate signed URL');
+        }
 
         return {
-            audio_url: publicUrl
+            audio_url: signedUrlResponse.data.signedUrl
         };
     } catch (error) {
+        console.error('Error in fetchWithRetry:', error);
         if (retryCount < maxRetries) {
             // Add exponential backoff here too
             const backoffTime = Math.min(1000 * Math.pow(2, retryCount), 8000);
@@ -93,13 +105,17 @@ export async function GET(request, { params }) {
         const { id } = params;
         const userId = session.user.id;
 
+        console.log('Fetching audio for visualization:', { id, userId });
+
         // Fetch audio data with retry mechanism
         const audioData = await fetchWithRetry(id, userId);
 
         if (!audioData) {
+            console.log('Audio not found or unauthorized for:', { id, userId });
             return NextResponse.json({ error: 'Audio not found or unauthorized access' }, { status: 404 });
         }
 
+        console.log('Successfully retrieved signed URL for:', { id });
         return NextResponse.json({ audio_url: audioData.audio_url });
     } catch (error) {
         console.error('Error in GET /api/visualization/[id]/audio:', error);

@@ -22,13 +22,14 @@ export async function POST(request) {
             return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
         }
 
-        const { visualizationId } = await request.json();
+        // Parse request body once
+        const body = await request.json();
+        const { visualizationId, data: tempData } = body;
+
         if (!visualizationId) {
             return NextResponse.json({ error: "Visualization ID is required" }, { status: 400 });
         }
 
-        // Get the temporary visualization data from localStorage (client will send it)
-        const { data: tempData } = await request.json();
         if (!tempData) {
             return NextResponse.json({ error: "No visualization data provided" }, { status: 400 });
         }
@@ -96,7 +97,8 @@ export async function POST(request) {
                 .from('visualization_audio')
                 .insert({
                     visualization_id: visualization.id,
-                    storage_path: newPath
+                    storage_path: newPath,
+                    audio_type: 'full'
                 });
 
             if (audioError) {

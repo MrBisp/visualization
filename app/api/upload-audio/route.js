@@ -47,7 +47,8 @@ export async function POST(request) {
             .insert([
                 {
                     visualization_id: visualizationId,
-                    storage_path: filePath
+                    storage_path: filePath,
+                    audio_type: 'full'
                 }
             ])
             .select()
@@ -55,14 +56,16 @@ export async function POST(request) {
 
         if (audioError) throw audioError;
 
-        // Get the public URL for the uploaded file
-        const { data: { publicUrl } } = supabase
+        // Get a signed URL that expires in 1 hour
+        const { data: { signedUrl }, error: signedUrlError } = await supabase
             .storage
             .from('visualization-audio')
-            .getPublicUrl(filePath);
+            .createSignedUrl(filePath, 3600);
+
+        if (signedUrlError) throw signedUrlError;
 
         return NextResponse.json({ 
-            audio_url: publicUrl,
+            audio_url: signedUrl,
             storage_path: filePath
         });
     } catch (error) {

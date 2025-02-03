@@ -4,7 +4,13 @@ import { createClient } from '@supabase/supabase-js';
 
 const supabase = createClient(
     process.env.NEXT_PUBLIC_SUPABASE_URL,
-    process.env.SUPABASE_SERVICE_ROLE_KEY
+    process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY,
+    {
+        auth: {
+            persistSession: false,
+            autoRefreshToken: false
+        }
+    }
 );
 
 export async function GET() {
@@ -29,7 +35,8 @@ export async function GET() {
                 ),
                 visualization_audio (
                     id,
-                    storage_path
+                    storage_path,
+                    audio_type
                 )
             `)
             .eq('user_id', session.user.id)
@@ -44,7 +51,7 @@ export async function GET() {
         }
 
         // Process visualizations to include overall status
-        const processedVisualizations = visualizations.map(visualization => {
+        const processedVisualizations = await Promise.all(visualizations.map(async visualization => {
             // Calculate overall status based on sections
             const sections = visualization.visualization_sections || [];
             let status = visualization.status;
@@ -60,17 +67,22 @@ export async function GET() {
                 else status = 'pending';
             }
 
-            // Check if audio exists and get public URL if it does
+            // Check if audio exists and get signed URL if it does
             const audioFile = visualization.visualization_audio?.[0];
             const hasAudio = !!audioFile;
             let audioUrl = null;
+            let audioType = null;
 
             if (hasAudio && audioFile.storage_path) {
-                const { data: { publicUrl } } = supabase
+                const { data: { signedUrl }, error: signedUrlError } = await supabase
                     .storage
                     .from('visualization-audio')
-                    .getPublicUrl(audioFile.storage_path);
-                audioUrl = publicUrl;
+                    .createSignedUrl(audioFile.storage_path, 3600);
+                
+                if (!signedUrlError) {
+                    audioUrl = signedUrl;
+                    audioType = audioFile.audio_type;
+                }
             }
 
             return {
@@ -78,10 +90,11 @@ export async function GET() {
                 status,
                 has_audio: hasAudio,
                 audio_url: audioUrl,
+                audio_type: audioType,
                 visualization_sections: undefined,
                 visualization_audio: undefined
             };
-        });
+        }));
 
         return new Response(JSON.stringify(processedVisualizations), {
             status: 200,

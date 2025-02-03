@@ -32,7 +32,15 @@ export async function GET(request, { params }) {
         
         const { data: visualizationData, error: vizError } = await supabase
             .from('visualizations')
-            .select('*')
+            .select(`
+                *,
+                visualization_sections (
+                    id,
+                    section_type,
+                    content,
+                    sequence_order
+                )
+            `)
             .eq('id', id)
             .eq('user_id', session.user.id)
             .single();
@@ -43,12 +51,11 @@ export async function GET(request, { params }) {
         }
 
         // Fetch audio separately
-        const { data: audioData, error: audioError } = await supabase
+        const { data: audioFiles, error: audioError } = await supabase
             .from('visualization_audio')
-            .select('storage_path')
+            .select('storage_path, audio_type')
             .eq('visualization_id', id)
-            .limit(1)
-            .single({ timeout: 10000 });
+            .order('created_at', { ascending: false });
 
         if (audioError) {
             console.error('Error fetching audio:', audioError);
@@ -56,23 +63,61 @@ export async function GET(request, { params }) {
 
         // Get a signed URL if we have a storage path (valid for 1 hour)
         let audioUrl = null;
-        if (audioData?.storage_path) {
-            const { data: { signedUrl }, error: signedUrlError } = await supabase
-                .storage
-                .from('visualization-audio')
-                .createSignedUrl(audioData.storage_path, 3600);
+        let audioType = null;
+        
+        if (audioFiles?.length > 0) {
+            // Check if we have a full version
+            const fullVersion = audioFiles.find(audio => audio.audio_type === 'full');
+            const tempVersion = audioFiles.find(audio => audio.audio_type === 'temp');
 
-            if (signedUrlError) {
-                console.error('Error creating signed URL:', signedUrlError);
-            } else {
-                audioUrl = signedUrl;
+            // If we have both versions, delete the temp version
+            if (fullVersion && tempVersion) {
+                console.log('Found both temp and full versions, cleaning up temp version...');
+                
+                // Delete the temp file from storage
+                const { error: deleteStorageError } = await supabase
+                    .storage
+                    .from('visualization-audio')
+                    .remove([tempVersion.storage_path]);
+
+                if (deleteStorageError) {
+                    console.error('Error deleting temp file from storage:', deleteStorageError);
+                }
+
+                // Delete the temp record from the database
+                const { error: deleteRecordError } = await supabase
+                    .from('visualization_audio')
+                    .delete()
+                    .eq('visualization_id', id)
+                    .eq('audio_type', 'temp');
+
+                if (deleteRecordError) {
+                    console.error('Error deleting temp record from database:', deleteRecordError);
+                }
+            }
+
+            // Use the full version if available, otherwise use temp
+            const audioToUse = fullVersion || tempVersion;
+            if (audioToUse) {
+                const { data: { signedUrl }, error: signedUrlError } = await supabase
+                    .storage
+                    .from('visualization-audio')
+                    .createSignedUrl(audioToUse.storage_path, 3600);
+
+                if (signedUrlError) {
+                    console.error('Error creating signed URL:', signedUrlError);
+                } else {
+                    audioUrl = signedUrl;
+                    audioType = audioToUse.audio_type;
+                }
             }
         }
 
         // Construct the final response
         const visualization = {
             ...visualizationData,
-            audio_url: audioUrl
+            audio_url: audioUrl,
+            audio_type: audioType
         };
 
         // Clean up the response

@@ -169,7 +169,9 @@ export default function GenerationPage({ params }) {
         return () => {
             // Clean up generation in progress flag on unmount
             const generationKey = `generation_in_progress_${id}`;
+            const audioGeneratedKey = `audio_generated_${id}`;
             localStorage.removeItem(generationKey);
+            localStorage.removeItem(audioGeneratedKey);
         };
     }, [id]);
 
@@ -232,40 +234,162 @@ export default function GenerationPage({ params }) {
     const handleAudioGeneration = async () => {
         if (!visualization || isGeneratingAudio) return;
 
-        setIsGeneratingAudio(true);
+        // For temporary visualizations, we don't need to check existing audio
+        if (visualization.id.startsWith('temp-')) {
+            await handleTempAudioGeneration();
+            return;
+        }
+
+        // First check if we already have a valid audio URL in the visualization state
+        if (visualization.audio_url && visualization.audio_type === 'full') {
+            console.log('Already have valid audio URL in state, skipping generation');
+            return;
+        }
+
+        // Double check if audio exists in the database and storage
         try {
-            // For temporary visualizations
-            if (visualization.id.startsWith('temp-')) {
-                const result = await completeTempVisualization(
-                    visualization.id,
-                    visualization.text,
-                    visualization.selected_voice || 'alloy'
-                );
-                setVisualization(prev => ({
-                    ...prev,
-                    audio_url: result.audio_url
-                }));
-            } else {
-                // For logged-in users
-                const response = await fetch('/api/generation/complete', {
-                    method: 'POST',
-                    headers: {
-                        'Content-Type': 'application/json',
-                    },
-                    body: JSON.stringify({ id: visualization.id }),
-                });
+            console.log('Thoroughly checking audio status for visualization:', visualization.id);
+            
+            // First try the audio endpoint
+            const audioResponse = await fetch(`/api/visualization/${visualization.id}/audio`);
+            if (audioResponse.ok) {
+                const audioData = await audioResponse.json();
+                console.log('Audio status check response:', audioData);
 
-                if (!response.ok) throw new Error('Failed to generate audio');
-
-                const data = await response.json();
-                setVisualization(prev => ({
-                    ...prev,
-                    audio_url: data.audio_url
-                }));
+                if (audioData.audio_url) {
+                    console.log('Found existing audio, updating state');
+                    setVisualization(prev => ({
+                        ...prev,
+                        audio_url: audioData.audio_url,
+                        audio_type: 'full'
+                    }));
+                    return;
+                }
             }
+
+            // If audio endpoint returns 404, check the main visualization endpoint as backup
+            const vizResponse = await fetch(`/api/visualization/${visualization.id}`);
+            if (vizResponse.ok) {
+                const vizData = await vizResponse.json();
+                console.log('Visualization check response:', vizData);
+
+                if (vizData.audio_url && vizData.audio_type === 'full') {
+                    console.log('Found existing audio in visualization data, updating state');
+                    setVisualization(prev => ({
+                        ...prev,
+                        audio_url: vizData.audio_url,
+                        audio_type: 'full'
+                    }));
+                    return;
+                }
+            }
+
+            // If we get here and have a 404, then we truly need to generate
+            if (audioResponse.status === 404) {
+                console.log('No existing audio found, checking for stale records before generation');
+                // Clean up any stale audio records first
+                await fetch(`/api/visualization/${visualization.id}/audio/cleanup`, {
+                    method: 'POST'
+                }).catch(err => console.error('Failed to cleanup stale audio records:', err));
+                
+                console.log('Proceeding with audio generation');
+                await handleFullAudioGeneration();
+                return;
+            }
+
+            throw new Error(`Failed to check visualization status: ${audioResponse.status}`);
+        } catch (error) {
+            console.error('Error checking audio status:', error);
+            toast.error('Failed to check audio status. Please try refreshing the page.');
+        }
+    };
+
+    const handleTempAudioGeneration = async () => {
+        const audioGenerationStartedKey = `audio_generation_started_${visualization.id}`;
+        if (localStorage.getItem(audioGenerationStartedKey)) {
+            console.log('Audio generation already started or completed, skipping');
+            return;
+        }
+
+        localStorage.setItem(audioGenerationStartedKey, 'true');
+        setIsGeneratingAudio(true);
+
+        try {
+            console.log('Starting temporary audio generation');
+            const result = await completeTempVisualization(
+                visualization.id,
+                visualization.text,
+                visualization.selected_voice || 'alloy'
+            );
+
+            if (!result.audio_url) {
+                throw new Error('No audio URL returned from server');
+            }
+
+            console.log('Temporary audio generation completed');
+            const audioGeneratedKey = `audio_generated_${visualization.id}`;
+            localStorage.setItem(audioGeneratedKey, 'true');
+            
+            setVisualization(prev => ({
+                ...prev,
+                audio_url: result.audio_url
+            }));
+
+            toast(
+                <div>
+                    Your audio will be available for 1 hour. 
+                    <br />
+                    <span className="font-semibold">Sign in to save it permanently!</span>
+                </div>, 
+                {
+                    duration: 6000,
+                    icon: '⏳'
+                }
+            );
         } catch (error) {
             console.error('Audio generation error:', error);
-            toast.error('Failed to generate audio');
+            toast.error('Failed to generate audio. Please try again.');
+            localStorage.removeItem(audioGenerationStartedKey);
+        } finally {
+            setIsGeneratingAudio(false);
+        }
+    };
+
+    const handleFullAudioGeneration = async () => {
+        const audioGenerationStartedKey = `audio_generation_started_${visualization.id}`;
+        localStorage.setItem(audioGenerationStartedKey, 'true');
+        setIsGeneratingAudio(true);
+
+        try {
+            console.log('Starting full audio generation');
+            const response = await fetch('/api/generation/complete', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                },
+                body: JSON.stringify({ id: visualization.id }),
+            });
+
+            if (!response.ok) {
+                throw new Error(`Failed to generate audio: ${response.status}`);
+            }
+
+            const data = await response.json();
+            
+            if (!data.audio_url) {
+                throw new Error('No audio URL returned from server');
+            }
+
+            console.log('Full audio generation completed');
+            setVisualization(prev => ({
+                ...prev,
+                audio_url: data.audio_url,
+                audio_type: 'full'
+            }));
+        } catch (error) {
+            console.error('Audio generation error:', error);
+            toast.error('Failed to generate audio. Please try again.');
+            localStorage.removeItem(audioGenerationStartedKey);
         } finally {
             setIsGeneratingAudio(false);
         }
@@ -295,7 +419,7 @@ export default function GenerationPage({ params }) {
                     'Content-Type': 'application/json',
                 },
                 body: JSON.stringify({
-                    visualizationId: id,
+                    visualizationId: params.id,
                     data: tempData
                 }),
             });
@@ -307,9 +431,10 @@ export default function GenerationPage({ params }) {
 
             // Clear the temporary data
             localStorage.removeItem('current_visualization');
-
-            // Refresh the router to update the UI
-            router.refresh();
+            
+            toast.success('Successfully registered! Your visualization will be saved to your account.');
+            
+            return true;
         } catch (error) {
             console.error('Error associating visualization:', error);
             throw error;
@@ -370,12 +495,14 @@ export default function GenerationPage({ params }) {
                             </svg>
                             Download Audio
                         </button>
-                        <button 
-                            onClick={() => router.push('/dashboard')}
-                            className="btn btn-outline"
-                        >
-                            Go to Dashboard
-                        </button>
+                        {session && (
+                            <button 
+                                onClick={() => router.push('/dashboard/visualizations')}
+                                className="btn btn-outline"
+                            >
+                                Go to Dashboard
+                            </button>
+                        )}
                     </div>
                 )}
 

@@ -19,27 +19,42 @@ export async function POST(request) {
             );
         }
 
-        // Check if user already exists in auth.users
-        const { data: existingAuthUser, error: authCheckError } = await supabase
-            .from('auth.users')
+        // First check if user exists in public.users
+        const { data: existingPublicUser, error: publicCheckError } = await supabase
+            .from('users')
             .select('id')
             .eq('email', email)
             .single();
 
-        if (existingAuthUser) {
+        if (existingPublicUser) {
             return NextResponse.json(
                 { error: "User already exists" },
                 { status: 400 }
             );
         }
 
-        // Hash password
-        const hashedPassword = await bcrypt.hash(password, 10);
+        // Then check if user exists in auth
+        const { data: { users }, error: listError } = await supabase.auth.admin.listUsers();
+        if (listError) {
+            console.error('Error checking existing users:', listError);
+            return NextResponse.json(
+                { error: "Failed to check existing users" },
+                { status: 500 }
+            );
+        }
 
-        // First create the user in auth.users
+        const userExists = users?.some(user => user.email.toLowerCase() === email.toLowerCase());
+        if (userExists) {
+            return NextResponse.json(
+                { error: "User already exists" },
+                { status: 400 }
+            );
+        }
+
+        // Create the auth user first
         const { data: authUser, error: authError } = await supabase.auth.admin.createUser({
             email,
-            password: password,
+            password,
             email_confirm: true,
             user_metadata: {
                 name
@@ -49,46 +64,50 @@ export async function POST(request) {
         if (authError) {
             console.error('Error creating auth user:', authError);
             return NextResponse.json(
-                { error: "Failed to create user" },
+                { error: "Failed to create user in auth system" },
                 { status: 500 }
             );
         }
 
-        // Then create the user in public.users with the same ID
-        const { data: user, error: userError } = await supabase
+        // Hash password for public.users table
+        const hashedPassword = await bcrypt.hash(password, 10);
+
+        // Then create the user in public.users
+        const { data: publicUser, error: publicError } = await supabase
             .from('users')
-            .insert([
-                {
-                    id: authUser.user.id,
-                    email,
-                    name,
-                    password: hashedPassword
-                }
-            ])
+            .insert({
+                id: authUser.user.id,
+                email,
+                name,
+                password: hashedPassword,
+                created_at: new Date().toISOString(),
+                updated_at: new Date().toISOString()
+            })
             .select()
             .single();
 
-        if (userError) {
-            console.error('Error creating user record:', userError);
-            // Try to clean up the auth user if public user creation fails
+        if (publicError) {
+            console.error('Error creating public user:', publicError);
+            // Clean up the auth user if public user creation fails
             await supabase.auth.admin.deleteUser(authUser.user.id);
             return NextResponse.json(
-                { error: "Failed to create user" },
+                { error: "Failed to create user record" },
                 { status: 500 }
             );
         }
 
         return NextResponse.json({
             user: {
-                id: user.id,
-                name: user.name,
-                email: user.email
+                id: publicUser.id,
+                name: publicUser.name,
+                email: publicUser.email
             }
         });
+
     } catch (error) {
         console.error('Registration error:', error);
         return NextResponse.json(
-            { error: "Internal server error" },
+            { error: error.message || "Internal server error" },
             { status: 500 }
         );
     }

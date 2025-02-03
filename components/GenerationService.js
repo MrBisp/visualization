@@ -8,6 +8,48 @@ import {
 import { toast } from 'react-hot-toast';
 import { getOpenAIVoiceId } from '@/app/constants/voices';
 
+const SECTION_PROMPTS = {
+    introduction: `You are an expert in guided visualization and meditation. Create a 1-2 minute introduction that:
+        - Sets a calming context
+        - Guides the listener to take deep breaths and relax
+        - Establishes a first-person perspective
+        - Uses present tense
+        - Speaks directly to the listener
+        Keep the tone warm and professional. Focus on physical and mental relaxation.`,
+    
+    scene_setup: `You are an expert in guided visualization. Create a 2-3 minute scene setup that:
+        - Describes the environment in rich, vivid detail
+        - Includes multiple sensory details (sight, sound, touch, smell)
+        - Creates an immersive atmosphere
+        - Uses present tense and first-person perspective
+        - Maintains a natural, flowing narrative
+        Focus on creating a vivid mental picture.`,
+    
+    emotional_priming: `You are an expert in guided visualization. Create a 3-minute emotional preparation that:
+        - Builds confidence and positive emotions
+        - Describes physical sensations of calmness and readiness
+        - Uses encouraging and empowering language
+        - Maintains first-person perspective
+        - Addresses common anxieties or concerns
+        Focus on emotional and mental preparation.`,
+    
+    action_execution: `You are an expert in guided visualization. Create a 6-8 minute action sequence that:
+        - Narrates the key actions in detail
+        - Includes internal thoughts and feelings
+        - Emphasizes success and mastery
+        - Uses present tense and first-person perspective
+        - Incorporates specific details from the scenario
+        Focus on the actual performance or execution.`,
+    
+    reflection: `You are an expert in guided visualization. Create a 2-3 minute closing reflection that:
+        - Reinforces the positive experience
+        - Connects the visualization to future success
+        - Gradually brings awareness back to the present
+        - Ends with confidence and optimism
+        - Maintains a professional, encouraging tone
+        Focus on cementing the positive visualization.`
+};
+
 export async function handleGeneration({
     id,
     isDebugMode,
@@ -89,15 +131,33 @@ export async function handleGeneration({
 
                 try {
                     // Generate content using the API
-                    const response = await fetch('/api/generation/section', {
+                    const response = await fetch('/api/ai', {
                         method: 'POST',
                         headers: {
                             'Content-Type': 'application/json',
                         },
                         body: JSON.stringify({
-                            text: visualizationData.text,
-                            section_type: section.section_type,
-                            isPreview: true
+                            systemPrompt: SECTION_PROMPTS[section.section_type],
+                            userPrompt: `Create a natural, flowing visualization script that:
+                                - Uses present tense
+                                - Speaks directly to the listener with I-language (e.g. "I am walking into the room" instead of "You are walking into the room")
+                                - Includes appropriate pauses (mark them with [...])
+                                - Uses concrete, specific language
+                                - Avoids complex metaphors
+                                - Maintains a professional, warm tone
+                                
+                                The script should feel natural when spoken and help the listener fully immerse in the visualization.
+                                
+                                Format the response with:
+                                - Clear paragraphs
+                                - [...] for pauses
+                                - No special characters that might interfere with text-to-speech
+                                - Notice that you will only write some of the content, meaning that before and after the content, other text will be added. Therefore it is important not to write anything like: "Here you go" or anything like that, as it will interrupt the flow of the script. 
+                                - Also, only focus on the part you are asked to write, and do not write anything else.
+                                ${section.isPreview ? '- Keep the content concise as this is a preview.' : ''}
+                                
+                                Based on this scenario: "${visualizationData.text}"`,
+                            maxTokens: section.isPreview ? 750 : 10000
                         }),
                     });
 
@@ -167,7 +227,8 @@ export async function handleGeneration({
                         body: JSON.stringify({
                             text: limitedText,
                             voice: getOpenAIVoiceId(visualizationData.voice),
-                            id: visualizationData.id
+                            id: visualizationData.id,
+                            isPreview: true
                         }),
                     });
 
@@ -177,34 +238,29 @@ export async function handleGeneration({
 
                     const audioData = await audioResponse.json();
                     
+                    if (!audioData.audio_url) {
+                        throw new Error('No audio URL returned from server');
+                    }
+                    
+                    // Set the audio generated flag
+                    localStorage.setItem(audioGeneratedKey, 'true');
+                    
                     // Update visualization with audio URL
                     visualizationData.audio_url = audioData.audio_url;
-                    visualizationData.audio_expires_at = new Date(Date.now() + 60 * 60 * 1000).toISOString(); // 1 hour from now
+                    visualizationData.is_preview = audioData.is_preview;
                     
                     // Update state and localStorage
-                    setVisualization(visualizationData);
+                    setVisualization(prev => ({
+                        ...prev,
+                        ...visualizationData,
+                        audio_url: audioData.audio_url,
+                        is_preview: audioData.is_preview
+                    }));
                     localStorage.setItem('current_visualization', JSON.stringify(visualizationData));
                     
-                    // Mark audio as generated
-                    localStorage.setItem(audioGeneratedKey, 'true');
-
-                    // Show expiration notice
-                    toast(
-                        <div>
-                            Your audio will be available for 1 hour. 
-                            <br />
-                            <span className="font-semibold">Sign in to save it permanently!</span>
-                        </div>, 
-                        {
-                            duration: 6000,
-                            icon: '⏳'
-                        }
-                    );
                 } catch (error) {
                     console.error('Audio generation error:', error);
-                    toast("Failed to generate audio. Please try again or sign in for the full experience.", {
-                        icon: '❌'
-                    });
+                    toast.error("Failed to generate audio. Please try again or sign in for the full experience.");
                 } finally {
                     setIsGeneratingAudio(false);
                 }
@@ -251,22 +307,18 @@ export async function handleGeneration({
                 const updated = typeof updater === 'function' ? updater(prev) : updater;
                 return {
                     ...updated,
-                    audio_url: updated.audio_url || existingAudioUrl
+                    audio_url: updated.audio_url || prev?.audio_url || existingAudioUrl
                 };
             });
         };
 
         // Replace all setVisualization calls with updateVisualizationState
         if (isTemporary) {
-            // For temporary visualizations...
             const parsedData = typeof savedData === 'string' ? JSON.parse(savedData) : savedData;
             updateVisualizationState(parsedData);
-            // Rest of temporary visualization logic...
         } else {
-            // For logged-in users...
             const sections = await getVisualizationProgress(id);
             updateVisualizationState(prev => ({ ...prev, sections }));
-            // Rest of logged-in user logic...
         }
 
     } catch (error) {
@@ -407,13 +459,6 @@ async function handleAudioGeneration({
 
     if (allCompleted && !noAudio) {
         try {
-            // Check if audio was already generated
-            const audioGeneratedKey = `audio_generated_${id}`;
-            if (localStorage.getItem(audioGeneratedKey)) {
-                console.log('Audio already generated, skipping');
-                return;
-            }
-
             setIsGeneratingAudio(true);
             
             // Complete the visualization using the service
@@ -427,14 +472,10 @@ async function handleAudioGeneration({
             setVisualization(prev => ({
                 ...prev,
                 ...completedVisualization,
-                audio_url: audioData.audio_url
+                audio_url: audioData.audio_url,
+                is_preview: false
             }));
 
-            // Mark audio as generated
-            localStorage.setItem(audioGeneratedKey, 'true');
-
-            // Clear localStorage since we're done
-            localStorage.removeItem('current_visualization');
             setIsGeneratingAudio(false);
         } catch (error) {
             console.error('Audio generation error:', error);

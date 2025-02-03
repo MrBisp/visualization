@@ -27,14 +27,15 @@ export async function GET(request, { params }) {
             .from('visualization_audio')
             .select('storage_path')
             .eq('visualization_id', id)
-            .single();
+            .order('created_at', { ascending: false })
+            .limit(1);
 
         if (audioError) {
             console.error('Error fetching audio:', audioError);
             return NextResponse.json({ error: 'Failed to fetch audio data' }, { status: 500 });
         }
 
-        if (!audioData?.storage_path) {
+        if (!audioData?.[0]?.storage_path) {
             return NextResponse.json({ error: 'No audio found for this visualization' }, { status: 404 });
         }
 
@@ -42,7 +43,7 @@ export async function GET(request, { params }) {
         const { data: { signedUrl }, error: signedUrlError } = await supabase
             .storage
             .from('visualization-audio')
-            .createSignedUrl(audioData.storage_path, 3600);
+            .createSignedUrl(audioData[0].storage_path, 3600);
 
         if (signedUrlError) {
             console.error('Error creating signed URL:', signedUrlError);

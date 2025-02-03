@@ -17,7 +17,7 @@ export default function AudioSection({ visualization, progress }) {
                 Listen to your personalized visualization. You can adjust the playback speed and skip forward/backward as needed.
                 {isTemp && (
                     <span className="block mt-2 text-yellow-600">
-                        Note: This is a temporary visualization. The audio will be available for 1 hour. Sign up to save it permanently!
+                        Note: This is a temporary visualization. The audio will be available for 1 hour. Sign up to save it permanently, and access the full version!
                     </span>
                 )}
             </p>

@@ -18,6 +18,10 @@ This app uses AI to generate personalized guided visualizations tailored to exac
 - **Backed by Neuroscience** – Visualization is a proven method to enhance focus, reduce stress, and improve outcomes.
 - **Anywhere, Anytime** – Listen on the go, during workouts, before meetings, or as part of your daily routine.
 
----
+## How users work
 
-Would you like any refinements based on your app’s branding or a specific target audience? 😊
+- Users can sign up for a free account to save their visualizations and access the full version.
+- Free users can generate a visuaization, but it will be a temporary visualization that will expire after 1 hour. It will also only be a preview of the visualization.
+- When they sign up, they can choose to generate a full version of the visualization and delete the temporary one.
+- We store the files in supabase storage. Notice that we use private storage, meaning we need to use a signed url to access the files.
+- Every time we generate audio it is expensive. Therefore we set a localstorage flag to prevent the user from generating audio multiple times. For example, when running on dev mode, the use effects are run twice.

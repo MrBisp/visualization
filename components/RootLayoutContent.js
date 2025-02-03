@@ -19,7 +19,7 @@ export default function RootLayoutContent({ children }) {
         return (
             <div className="min-h-screen">
                 {/* Desktop Sidebar */}
-                <div className="hidden md:block fixed top-0 left-0 h-full">
+                <div className="hidden md:block fixed top-0 left-0 h-full" style={{ zIndex: 100 }}>
                     <LeftNavbar onLinkClick={closeMobileMenu} />
                 </div>
 

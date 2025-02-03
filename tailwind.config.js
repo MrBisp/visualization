@@ -57,9 +57,9 @@ module.exports = {
           },
         },
         popup: {
-          "0%": { transform: "scale(0.8)", opacity: 0.8 },
-          "50%": { transform: "scale(1.1)", opacity: 1 },
-          "100%": { transform: "scale(1)", opacity: 1 },
+          "0%": { scale: 0.8, opacity: 0.8 },
+          "50%": { scale: 1.1, opacity: 1 },
+          "100%": { scale: 1, opacity: 1 },
         },
         shimmer: {
           "0%": { backgroundPosition: "0 50%" },

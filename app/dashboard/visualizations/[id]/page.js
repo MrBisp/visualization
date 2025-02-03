@@ -5,6 +5,7 @@ import { useRouter } from 'next/navigation';
 import { useSession } from "next-auth/react";
 import { toast } from 'react-hot-toast';
 import AudioPlayer from '@/components/AudioPlayer';
+import { completeTempVisualization } from '@/app/services/visualizationService';
 
 export default function VisualizationPage({ params }) {
     const router = useRouter();
@@ -15,6 +16,7 @@ export default function VisualizationPage({ params }) {
     const [isEditing, setIsEditing] = useState(false);
     const [newTitle, setNewTitle] = useState('');
     const [isGeneratingAudio, setIsGeneratingAudio] = useState(false);
+    const { data: session } = useSession();
 
     useEffect(() => {
         const fetchVisualization = async () => {
@@ -72,29 +74,69 @@ export default function VisualizationPage({ params }) {
     const generateAudio = async () => {
         if (!visualization || isGeneratingAudio) return;
 
+        // Check if audio already exists
+        const audioGeneratedKey = `audio_generated_${visualization.id}`;
+        if (localStorage.getItem(audioGeneratedKey)) {
+            console.log('Audio already generated, skipping');
+            return;
+        }
+
         setIsGeneratingAudio(true);
         try {
-            const response = await fetch('/api/generation/complete', {
-                method: 'POST',
-                headers: {
-                    'Content-Type': 'application/json',
-                },
-                body: JSON.stringify({ id: visualization.id }),
-            });
+            // For temporary visualizations
+            if (visualization.id.startsWith('temp-')) {
+                const result = await completeTempVisualization(
+                    visualization.id,
+                    visualization.text,
+                    visualization.selected_voice || 'alloy'
+                );
 
-            if (!response.ok) throw new Error('Failed to generate audio');
+                // Set the audio generated flag
+                localStorage.setItem(audioGeneratedKey, 'true');
+                
+                setVisualization(prev => ({
+                    ...prev,
+                    audio_url: result.audio_url
+                }));
 
-            const data = await response.json();
-            
-            // Update visualization with new audio URL
-            setVisualization(prev => ({
-                ...prev,
-                audio_url: data.visualization.visualization_audio?.[0]?.audio_url
-            }));
+                // Show expiration notice
+                toast(
+                    <div>
+                        Your audio will be available for 1 hour. 
+                        <br />
+                        <span className="font-semibold">Sign in to save it permanently!</span>
+                    </div>, 
+                    {
+                        duration: 6000,
+                        icon: '⏳'
+                    }
+                );
+            } else {
+                // For logged-in users
+                const response = await fetch('/api/generation/complete', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                    },
+                    body: JSON.stringify({ 
+                        id: visualization.id,
+                        voice: visualization.selected_voice || 'alloy'  // Use selected voice with fallback
+                    }),
+                });
 
-            toast.success('Audio generated successfully');
+                if (!response.ok) throw new Error('Failed to generate audio');
+
+                const data = await response.json();
+                
+                // Refresh the visualization data to get the latest audio information
+                const refreshResponse = await fetch(`/api/visualization/${visualization.id}`);
+                if (!refreshResponse.ok) throw new Error('Failed to refresh visualization data');
+                
+                const refreshedData = await refreshResponse.json();
+                setVisualization(refreshedData);
+            }
         } catch (error) {
-            console.error('Error generating audio:', error);
+            console.error('Audio generation error:', error);
             toast.error('Failed to generate audio');
         } finally {
             setIsGeneratingAudio(false);
@@ -209,67 +251,137 @@ export default function VisualizationPage({ params }) {
                 </div>
 
                 <div className="mb-8">
+                    {visualization.audio_type === 'temp' && session?.user && (
+                        <div className="alert alert-warning mb-4">
+                            <svg xmlns="http://www.w3.org/2000/svg" className="stroke-current shrink-0 h-6 w-6" fill="none" viewBox="0 0 24 24">
+                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
+                            </svg>
+                            <div>
+                                <h3 className="font-bold">Preview Version</h3>
+                                <p className="text-sm">This is a temporary preview of your visualization. Generate the full version to:</p>
+                                <ul className="list-disc list-inside text-sm mt-2">
+                                    <li>Get higher quality audio</li>
+                                    <li>Save it permanently</li>
+                                    <li>Access all customization options</li>
+                                </ul>
+                            </div>
+                        </div>
+                    )}
+
                     <div className="flex justify-between items-center mb-4">
                         <h2 className="text-xl font-semibold">Audio Visualization</h2>
-                        {visualization.audio_url && (
-                            <button
-                                onClick={() => {
-                                    const link = document.createElement('a');
-                                    link.href = visualization.audio_url;
-                                    link.download = `${visualization.title || 'visualization'}.mp3`;
-                                    document.body.appendChild(link);
-                                    link.click();
-                                    document.body.removeChild(link);
-                                }}
-                                className="btn btn-outline btn-sm"
-                            >
-                                <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4 mr-2" viewBox="0 0 20 20" fill="currentColor">
-                                    <path fillRule="evenodd" d="M3 17a1 1 0 011-1h12a1 1 0 110 2H4a1 1 0 01-1-1zm3.293-7.707a1 1 0 011.414 0L9 10.586V3a1 1 0 112 0v7.586l1.293-1.293a1 1 0 111.414 1.414l-3 3a1 1 0 01-1.414 0l-3-3a1 1 0 010-1.414z" clipRule="evenodd" />
-                                </svg>
-                                Download Audio
-                            </button>
-                        )}
-                    </div>
-                    {visualization.audio_url ? (
-                        <AudioPlayer 
-                            visualizationId={visualization.id}
-                            audioUrl={visualization.audio_url}
-                        />
-                    ) : (
-                        <div className="rounded-lg shadow-sm p-6">
-                            <div className="space-y-4">
-                                <p className="text-gray-600">
-                                    No audio visualization available yet. Would you like to generate one?
-                                </p>
-                                <div className="bg-blue-50 border border-blue-200 rounded-lg p-4 text-sm text-blue-700">
-                                    <p className="flex items-center gap-2">
-                                        <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" viewBox="0 0 20 20" fill="currentColor">
-                                            <path fillRule="evenodd" d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-7-4a1 1 0 11-2 0 1 1 0 012 0zM9 9a1 1 0 000 2v3a1 1 0 001 1h1a1 1 0 100-2v-3a1 1 0 00-1-1H9z" clipRule="evenodd" />
-                                        </svg>
-                                        Audio generation typically takes 1-2 minutes to complete.
-                                    </p>
-                                </div>
-                                <button
+                        <div className="flex gap-2">
+                            {visualization.audio_type === 'temp' ? (
+                                <button 
+                                    className="btn btn-primary"
                                     onClick={generateAudio}
                                     disabled={isGeneratingAudio}
-                                    className="btn btn-primary w-full sm:w-auto"
                                 >
                                     {isGeneratingAudio ? (
                                         <>
-                                            <span className="loading loading-spinner loading-sm mr-2"></span>
-                                            Generating Audio... (1-2 minutes)
+                                            <span className="loading loading-spinner loading-sm"></span>
+                                            Generating Full Version...
                                         </>
                                     ) : (
-                                        'Generate Audio'
+                                        'Generate Full Version'
                                     )}
                                 </button>
-                            </div>
+                            ) : (
+                                !visualization.audio_url && (
+                                    <button
+                                        onClick={generateAudio}
+                                        className="btn btn-primary"
+                                        disabled={isGeneratingAudio}
+                                    >
+                                        {isGeneratingAudio ? (
+                                            <>
+                                                <span className="loading loading-spinner loading-sm"></span>
+                                                Generating Audio...
+                                            </>
+                                        ) : (
+                                            'Generate Audio'
+                                        )}
+                                    </button>
+                                )
+                            )}
+                            {visualization.audio_url && !isGeneratingAudio && visualization.audio_type === 'full' && (
+                                <button
+                                    onClick={() => {
+                                        const link = document.createElement('a');
+                                        link.href = visualization.audio_url;
+                                        link.download = `${visualization.title || 'visualization'}.mp3`;
+                                        document.body.appendChild(link);
+                                        link.click();
+                                        document.body.removeChild(link);
+                                    }}
+                                    className="btn btn-outline btn-sm"
+                                >
+                                    <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4 mr-2" viewBox="0 0 20 20" fill="currentColor">
+                                        <path fillRule="evenodd" d="M3 17a1 1 0 011-1h12a1 1 0 110 2H4a1 1 0 01-1-1zm3.293-7.707a1 1 0 011.414 0L9 10.586V3a1 1 0 112 0v7.586l1.293-1.293a1 1 0 111.414 1.414l-3 3a1 1 0 01-1.414 0l-3-3a1 1 0 010-1.414z" clipRule="evenodd" />
+                                    </svg>
+                                    Download Audio
+                                </button>
+                            )}
+                        </div>
+                    </div>
+
+                    {visualization.audio_url ? (
+                        <div>
+                            <AudioPlayer 
+                                visualizationId={visualization.id}
+                                audioUrl={visualization.audio_url}
+                            />
+                        </div>
+                    ) : (
+                        <div className="text-center py-8">
+                            <p className="text-gray-600 mb-4">No audio generated yet</p>
+                            <button
+                                onClick={generateAudio}
+                                className="btn btn-primary"
+                                disabled={isGeneratingAudio}
+                            >
+                                {isGeneratingAudio ? (
+                                    <>
+                                        <span className="loading loading-spinner loading-sm"></span>
+                                        Generating Audio...
+                                    </>
+                                ) : (
+                                    'Generate Audio'
+                                )}
+                            </button>
                         </div>
                     )}
                 </div>
 
                 {visualization.description && (
-                    <p className="text-gray-600 mb-8">{visualization.description}</p>
+                    <div className="mb-8">
+                        <h2 className="text-xl font-semibold mb-4">Your Scenario</h2>
+                        <div className="bg-base-200 rounded-lg p-4">
+                            <p className="text-gray-600">{visualization.description}</p>
+                        </div>
+                    </div>
+                )}
+
+                {visualization.sections && visualization.sections.length > 0 && (
+                    <div className="prose max-w-none">
+                        <h2 className="text-xl font-semibold mb-4">Visualization Script</h2>
+                        <div className="space-y-6">
+                            {visualization.sections
+                                .sort((a, b) => a.sequence_order - b.sequence_order)
+                                .map((section, index) => (
+                                <div key={section.id || index} className="bg-base-200 rounded-lg p-4">
+                                    <h3 className="text-lg font-semibold mb-2">
+                                        {section.section_type.split('_').map(word => 
+                                            word.charAt(0).toUpperCase() + word.slice(1)
+                                        ).join(' ')}
+                                    </h3>
+                                    <div className="whitespace-pre-wrap">
+                                        {section.content}
+                                    </div>
+                                </div>
+                            ))}
+                        </div>
+                    </div>
                 )}
             </div>
         </div>

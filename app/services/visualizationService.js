@@ -229,7 +229,7 @@ async function generateSectionContent(visualization, sectionType) {
       if (previousSection?.content) {
         // Get the last 50 words
         const words = previousSection.content.split(/\s+/);
-        const lastFiftyWords = words.slice(-50).join(' ');
+        const lastFiftyWords = words.slice(-100).join(' ');
         previousContent = `\nContinue from the previous section which ended with:\n"${lastFiftyWords}"\n`;
       }
     }
@@ -381,6 +381,42 @@ async function getAudioUrl(visualizationId) {
 export async function completeVisualization(id) {
     console.log('Completing visualization:', id);
     try {
+        // Check if we're already generating audio for this visualization
+        const generatingKey = `generating_audio_${id}`;
+        if (typeof window !== 'undefined' && localStorage.getItem(generatingKey)) {
+            console.log('Already generating audio for this visualization');
+            return null;
+        }
+
+        // First, check if audio already exists for this visualization
+        const { data: existingAudio, error: audioCheckError } = await supabase
+            .from('visualization_audio')
+            .select('*')
+            .eq('visualization_id', id)
+            .order('created_at', { ascending: false });
+
+        if (audioCheckError) {
+            console.error('Error checking existing audio:', audioCheckError);
+            throw audioCheckError;
+        }
+
+        // If we have a full version, no need to generate
+        if (existingAudio?.some(audio => audio.audio_type === 'full')) {
+            console.log('Full audio version already exists, skipping generation');
+            return null;
+        }
+
+        // Set the flag that we're generating
+        if (typeof window !== 'undefined') {
+            localStorage.setItem(generatingKey, 'true');
+        }
+        
+        // If we're on the server, skip audio generation
+        if(typeof window == 'undefined') {
+            console.log('No window, skipping audio generation');
+            return null;
+        }
+
         // Get all sections in order
         const { data: sections, error: sectionsError } = await supabase
             .from('visualization_sections')
@@ -438,8 +474,17 @@ export async function completeVisualization(id) {
 
         if (updateError) throw updateError;
 
+        // Clear the generating flag
+        if (typeof window !== 'undefined') {
+            localStorage.removeItem(generatingKey);
+        }
+
         return { success: true, audio_url: audioUrl };
     } catch (error) {
+        // Clear the generating flag in case of error
+        if (typeof window !== 'undefined') {
+            localStorage.removeItem(`generating_audio_${id}`);
+        }
         console.error('Error completing visualization:', error);
         throw error;
     }

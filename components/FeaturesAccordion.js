@@ -15,9 +15,7 @@ const features = [
     title: "Personalized Visualizations",
     description: 
       "Get AI-generated guided visualizations tailored to your specific goals, whether it's peak performance, stress reduction, or mental preparation for important events",
-    type: "image",
-    path: "",
-    alt: "Personalized visualization interface",
+    type: "svg",
     svg: (
       <svg
         xmlns="http://www.w3.org/2000/svg"
@@ -39,9 +37,7 @@ const features = [
     title: "AI Voice Customization",
     description:
       "Choose from multiple AI voices or customize the perfect voice for your guided sessions. Adjust tone, pace, and background ambiance for the optimal experience",
-    type: "image",
-    path: "",
-    alt: "Voice customization interface",
+    type: "svg",
     svg: (
       <svg
         xmlns="http://www.w3.org/2000/svg"
@@ -62,9 +58,7 @@ const features = [
   {
     title: "For any goal",
     description: "Whether it's a big event, a new job, or a personal challenge, our AI can help you visualize success and achieve your goals",
-    type: "image",
-    path: "",
-    alt: "Personalized visualization interface",
+    type: "svg",
     svg: (
       <svg
         xmlns="http://www.w3.org/2000/svg"
@@ -123,7 +117,7 @@ const Item = ({ feature, isOpen, setFeatureSelected }) => {
 
 // Updated Media component with better responsive sizing
 const Media = ({ feature }) => {
-  const { type, path, format, alt } = feature;
+  const { type, path, format, alt, svg } = feature;
   const style = "rounded-2xl aspect-square w-full max-w-md mx-auto lg:max-w-lg";
   const size = {
     width: 500,
@@ -154,6 +148,12 @@ const Media = ({ feature }) => {
         width={size.width}
         height={size.height}
       />
+    );
+  } else if (type === "svg") {
+    return (
+      <div className={`${style} !border-none bg-base-200 flex items-center justify-center`}>
+        {svg}
+      </div>
     );
   } else {
     return <div className={`${style} !border-none bg-base-200`}></div>;
