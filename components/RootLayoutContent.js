@@ -61,7 +61,7 @@ export default function RootLayoutContent({ children }) {
         <>
             <Header />
             <main className="w-full">
-                <div className="max-w-7xl mx-auto px-4 py-8 md:p-8">
+                <div className="max-w-8xl mx-auto px-4 py-8 md:p-8">
                     {children}
                 </div>
             </main>

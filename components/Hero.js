@@ -1,8 +1,18 @@
 import Image from "next/image";
 import config from "@/config";
 import Link from "next/link";
+import { useEffect, useRef } from "react";
 
 const Hero = () => {
+  const videoRef = useRef(null);
+
+  useEffect(() => {
+    if (videoRef.current) {
+      videoRef.current.playbackRate = 2.0;
+      videoRef.current.currentTime = 2.0;
+    }
+  }, []);
+
   return (
     <section className="max-w-7xl mx-auto bg-base-100 flex flex-col lg:flex-row items-center justify-center gap-8 lg:gap-20 px-4 sm:px-8 py-8 lg:py-20" style={{ backgroundColor: "transparent" }}>
       <div className="flex flex-col gap-6 lg:gap-14 items-center lg:items-start max-w-2xl">
@@ -19,12 +29,28 @@ const Hero = () => {
         </Link>
         <p className="text-sm sm:text-base space-y-1 text-center lg:text-left">
           <span className="block">✅ No sign-up required</span>
-          <span className="block">✅ Your first visualization is free</span>
+          <span className="block">✅ Free preview of 1 visualization</span>
           <span className="block">✅ No credit card required</span>
         </p>
       </div>
       <div className="w-full lg:w-auto flex items-center justify-center">
-        <p>Hero image</p>
+        <video
+          ref={videoRef}
+          src="/hero.webm"
+          autoPlay
+          loop
+          muted
+          playsInline
+          style={{
+            width: "100%",
+            maxWidth: "none",
+            height: "auto",
+            border: "1px solid rgba(0, 0, 0, 0.1)",
+            borderRadius: "10px",
+            boxShadow: "0 0 10px 0px rgba(0, 0, 0, 0.1)",
+            overflow: "hidden",
+          }}
+        />
       </div>
     </section>
   );

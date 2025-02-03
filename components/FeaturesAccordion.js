@@ -15,7 +15,9 @@ const features = [
     title: "Personalized Visualizations",
     description: 
       "Get AI-generated guided visualizations tailored to your specific goals, whether it's peak performance, stress reduction, or mental preparation for important events",
-    type: "svg",
+    type: "image",
+    path: "/voice.png",
+    alt: "Personalized Visualizations",
     svg: (
       <svg
         xmlns="http://www.w3.org/2000/svg"
@@ -31,13 +33,15 @@ const features = [
           d="M2.25 12l8.954-8.955c.44-.439 1.152-.439 1.591 0L21.75 12M4.5 9.75v10.125c0 .621.504 1.125 1.125 1.125H9.75v-4.875c0-.621.504-1.125 1.125-1.125h2.25c.621 0 1.125.504 1.125 1.125V21h4.125c.621 0 1.125-.504 1.125-1.125V9.75M8.25 21h8.25"
         />
       </svg>
-    ),
+    )
   },
   {
     title: "AI Voice Customization",
     description:
       "Choose from multiple AI voices or customize the perfect voice for your guided sessions. Adjust tone, pace, and background ambiance for the optimal experience",
-    type: "svg",
+    type: "image",
+    path: "/customize.png",
+    alt: "AI Voice Customization",
     svg: (
       <svg
         xmlns="http://www.w3.org/2000/svg"
@@ -53,12 +57,14 @@ const features = [
           d="M19.114 5.636a9 9 0 010 12.728M16.463 8.288a5.25 5.25 0 010 7.424M6.75 8.25l4.72-4.72a.75.75 0 011.28.53v15.88a.75.75 0 01-1.28.53l-4.72-4.72H4.51c-.88 0-1.704-.507-1.938-1.354A9.01 9.01 0 012.25 12c0-.83.112-1.633.322-2.396C2.806 8.756 3.63 8.25 4.51 8.25H6.75z"
         />
       </svg>
-    ),
+    )
   },
   {
     title: "For any goal",
     description: "Whether it's a big event, a new job, or a personal challenge, our AI can help you visualize success and achieve your goals",
-    type: "svg",
+    type: "image",
+    path: "/goal.png",
+    alt: "For any goal",
     svg: (
       <svg
         xmlns="http://www.w3.org/2000/svg"
@@ -70,7 +76,7 @@ const features = [
       >
         <path strokeLinecap="round" strokeLinejoin="round" d="M12 4.5v15m7.5-7.5h-15" />
       </svg>
-    ),
+    )
   }
 ];
 
@@ -144,7 +150,7 @@ const Media = ({ feature }) => {
       <Image
         src={path}
         alt={alt}
-        className={`${style} object-cover object-center`}
+        className={`${style} object-contain object-top`}
         width={size.width}
         height={size.height}
       />
