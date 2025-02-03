@@ -94,7 +94,7 @@ function SignupContent() {
                 throw new Error(result.error);
             }
 
-            toast.success("Welcome to [App Name]!");
+            toast.success("Welcome to the future of self-improvement!");
             router.push('/onboarding');
         } catch (error) {
             toast.error(error.message);

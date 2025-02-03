@@ -20,7 +20,7 @@ const LoginModal = ({ isOpen = false, setIsOpen }) => {
         <Modal
             isOpen={isOpen}
             setIsOpen={setIsOpen}
-            title="Welcome to [App Name]!"
+            title="Welcome to the future of self-improvement!"
         >
             <div className="space-y-6 py-4">
                 {inviteCode && (
