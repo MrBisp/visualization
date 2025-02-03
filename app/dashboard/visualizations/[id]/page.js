@@ -6,6 +6,7 @@ import { useSession } from "next-auth/react";
 import { toast } from 'react-hot-toast';
 import AudioPlayer from '@/components/AudioPlayer';
 import { completeTempVisualization } from '@/app/services/visualizationService';
+import { getOpenAIVoiceId } from '@/app/constants/voices';
 
 export default function VisualizationPage({ params }) {
     const router = useRouter();
@@ -74,10 +75,11 @@ export default function VisualizationPage({ params }) {
     const generateAudio = async () => {
         if (!visualization || isGeneratingAudio) return;
 
-        // Check if audio already exists
+        // Check if audio already exists either in localStorage or as a URL
         const audioGeneratedKey = `audio_generated_${visualization.id}`;
-        if (localStorage.getItem(audioGeneratedKey)) {
-            console.log('Audio already generated, skipping');
+        // Only skip if we have a full version, allow regeneration if we have a temp version
+        if ((localStorage.getItem(audioGeneratedKey) || visualization.audio_url) && visualization.audio_type === 'full') {
+            console.log('Full audio version already exists, skipping');
             return;
         }
 
@@ -90,14 +92,14 @@ export default function VisualizationPage({ params }) {
                     visualization.text,
                     visualization.selected_voice || 'alloy'
                 );
-
-                // Set the audio generated flag
-                localStorage.setItem(audioGeneratedKey, 'true');
                 
                 setVisualization(prev => ({
                     ...prev,
                     audio_url: result.audio_url
                 }));
+
+                // Set the audio generated flag for temporary visualizations
+                localStorage.setItem(audioGeneratedKey, 'true');
 
                 // Show expiration notice
                 toast(
@@ -120,7 +122,7 @@ export default function VisualizationPage({ params }) {
                     },
                     body: JSON.stringify({ 
                         id: visualization.id,
-                        voice: visualization.selected_voice || 'alloy'  // Use selected voice with fallback
+                        voice: getOpenAIVoiceId(visualization.selected_voice) || 'alloy'  // Convert to OpenAI voice ID
                     }),
                 });
 
@@ -133,7 +135,12 @@ export default function VisualizationPage({ params }) {
                 if (!refreshResponse.ok) throw new Error('Failed to refresh visualization data');
                 
                 const refreshedData = await refreshResponse.json();
-                setVisualization(refreshedData);
+                // Ensure we set both audio_url and audio_type after successful generation
+                setVisualization(prev => ({
+                    ...refreshedData,
+                    audio_url: refreshedData.audio_url,
+                    audio_type: 'full'  // Explicitly set to full after successful generation
+                }));
             }
         } catch (error) {
             console.error('Audio generation error:', error);
@@ -260,9 +267,8 @@ export default function VisualizationPage({ params }) {
                                 <h3 className="font-bold">Preview Version</h3>
                                 <p className="text-sm">This is a temporary preview of your visualization. Generate the full version to:</p>
                                 <ul className="list-disc list-inside text-sm mt-2">
-                                    <li>Get higher quality audio</li>
+                                    <li>Get the full version</li>
                                     <li>Save it permanently</li>
-                                    <li>Access all customization options</li>
                                 </ul>
                             </div>
                         </div>

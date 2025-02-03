@@ -4,6 +4,8 @@ import Hero from "@/components/Hero";
 import Header from "@/components/Header";
 import FeaturesAccordion from "@/components/FeaturesAccordion";
 import FeaturesGrid from "@/components/FeaturesGrid";
+import Pricing from "@/components/Pricing";
+import FAQ from "@/components/FAQ";
 export default function Page() {
   const { status } = useSession();
 
@@ -12,6 +14,8 @@ export default function Page() {
       <Hero />
       <FeaturesAccordion />
       <FeaturesGrid />
+      <Pricing />
+      <FAQ />
     </div>
   );
 }

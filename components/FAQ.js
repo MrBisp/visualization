@@ -7,22 +7,63 @@ import { useRef, useState } from "react";
 
 const faqList = [
   {
-    question: "What do I get exactly?",
-    answer: <div className="space-y-2 leading-relaxed">Loreum Ipseum</div>,
+    question: "How does the AI visualization generator work?",
+    answer: (
+      <div className="space-y-2 leading-relaxed">
+        <p>Our app works in 4 simple steps:</p>
+        <ol className="list-decimal pl-4 space-y-1">
+          <li>You set your intention and choose what you want to focus on (e.g., productivity, relaxation, motivation)</li>
+          <li>Our AI generates a personalized audio journey based on your specific needs</li>
+          <li>You listen and immerse yourself in your custom visualization</li>
+          <li>You can refine your preferences and create new visualizations anytime</li>
+        </ol>
+      </div>
+    ),
+  },
+  {
+    question: "What's included in the free version?",
+    answer: (
+      <div className="space-y-2 leading-relaxed">
+        <p>With the free version, you can:</p>
+        <ul className="list-disc pl-4">
+          <li>Generate preview visualizations</li>
+          <li>Access temporary visualizations that expire after 1 hour</li>
+          <li>Try out the core features of our platform</li>
+        </ul>
+        <p>Sign up for a full account to save your visualizations permanently and access all features!</p>
+      </div>
+    ),
+  },
+  {
+    question: "How long should I use the visualizations?",
+    answer: (
+      <div className="space-y-2 leading-relaxed">
+        Just a few minutes a day can make a noticeable difference in your mindset and performance. You can listen to your visualizations anywhere, anytime - during workouts, before meetings, or as part of your daily routine. Our method is backed by neuroscience and is proven to enhance focus, reduce stress, and improve outcomes.
+      </div>
+    ),
   },
   {
     question: "Can I get a refund?",
     answer: (
       <p>
-        Yes! You can request a refund within 7 days of your purchase. Reach out
-        by email.
+        Yes! You can request a refund within 7 days of your purchase. Please reach out to us by email and we&apos;ll be happy to help.
       </p>
     ),
   },
   {
-    question: "I have another question",
+    question: "Can I generate multiple visualizations?",
     answer: (
-      <div className="space-y-2 leading-relaxed">Cool, contact us by email</div>
+      <div className="space-y-2 leading-relaxed">
+        Yes, you can generate multiple visualizations based on different goals and needs. However, please note that audio generation is resource-intensive, so there are some limitations in place to prevent excessive generation. Each visualization is carefully crafted to be unique and personalized to your specific needs.
+      </div>
+    ),
+  },
+  {
+    question: "How do I access my saved visualizations?",
+    answer: (
+      <div className="space-y-2 leading-relaxed">
+        When you sign up for a full account, your visualizations are securely stored and can be accessed at any time through your dashboard. We use private storage to ensure your visualizations remain secure and accessible only to you through authenticated access.
+      </div>
     ),
   },
 ];

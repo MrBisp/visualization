@@ -4,7 +4,7 @@ import { createClient } from '@supabase/supabase-js';
 
 const supabase = createClient(
     process.env.NEXT_PUBLIC_SUPABASE_URL,
-    process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY,
+    process.env.SUPABASE_SERVICE_ROLE_KEY,
     {
         auth: {
             persistSession: false,
@@ -74,14 +74,20 @@ export async function GET() {
             let audioType = null;
 
             if (hasAudio && audioFile.storage_path) {
-                const { data: { signedUrl }, error: signedUrlError } = await supabase
-                    .storage
-                    .from('visualization-audio')
-                    .createSignedUrl(audioFile.storage_path, 3600);
-                
-                if (!signedUrlError) {
-                    audioUrl = signedUrl;
-                    audioType = audioFile.audio_type;
+                try {
+                    const { data, error: signedUrlError } = await supabase
+                        .storage
+                        .from('visualization-audio')
+                        .createSignedUrl(audioFile.storage_path, 3600);
+                    
+                    if (signedUrlError) {
+                        console.error('Error creating signed URL:', signedUrlError);
+                    } else if (data?.signedUrl) {
+                        audioUrl = data.signedUrl;
+                        audioType = audioFile.audio_type;
+                    }
+                } catch (error) {
+                    console.error('Error creating signed URL:', error);
                 }
             }
 

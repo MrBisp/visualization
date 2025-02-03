@@ -434,6 +434,12 @@ export default function GenerationPage({ params }) {
             
             toast.success('Successfully registered! Your visualization will be saved to your account.');
             
+            // Check if audio is ready and redirect to dashboard if it is
+            if (visualization?.audio_url) {
+                router.push('/dashboard/visualizations');
+                return true;
+            }
+            
             return true;
         } catch (error) {
             console.error('Error associating visualization:', error);

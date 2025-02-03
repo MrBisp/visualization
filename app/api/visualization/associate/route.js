@@ -98,7 +98,7 @@ export async function POST(request) {
                 .insert({
                     visualization_id: visualization.id,
                     storage_path: newPath,
-                    audio_type: 'full'
+                    audio_type: 'temp'
                 });
 
             if (audioError) {

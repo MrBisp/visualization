@@ -109,7 +109,8 @@ export async function POST(request) {
             // Generate TTS for each chunk in parallel
             const audioChunksPromises = textChunks.map(async (chunk, i) => {
                 console.log(`Starting audio chunk ${i + 1} of ${textChunks.length}`);
-                const openAIVoice = getOpenAIVoiceId(voice) || 'alloy';
+                // Use the provided voice directly since it's already in OpenAI format
+                const openAIVoice = voice;
                 
                 const generateChunk = async () => {
                     const mp3 = await openai.audio.speech.create({
