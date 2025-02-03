@@ -2,12 +2,12 @@ import themes from "daisyui/src/theming/themes";
 
 const config = {
   // REQUIRED
-  appName: "App name (coming soon)",
+  appName: "Synaipse",
   // REQUIRED: a short description of your app for SEO tags (can be overwritten)
-  appDescription:
-    "The easy way to share bar and restaurant reviews with your friends.",
+  appDescription: "Train your mind with AI visualizations",
+    
   // REQUIRED (no https://, not trialing slash at the end, just the naked domain)
-  domainName: "appname.com",
+  domainName: "synaipse.com",
   crisp: {
     // Crisp website ID. IF YOU DON'T USE CRISP: just remove this => Then add a support email in this config file (mailgun.supportEmail) otherwise customer support won't work.
     id: "",
