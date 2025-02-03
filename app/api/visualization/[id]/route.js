@@ -3,6 +3,9 @@ import { NextResponse } from 'next/server';
 import { getServerSession } from "next-auth";
 import { authOptions } from "@/libs/next-auth";
 
+// This tells Next.js this is a dynamic route
+export const dynamic = 'force-dynamic';
+
 // Create Supabase client with service role key for admin access
 const supabase = createClient(
     process.env.NEXT_PUBLIC_SUPABASE_URL,

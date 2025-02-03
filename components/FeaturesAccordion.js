@@ -16,7 +16,7 @@ const features = [
     description: 
       "Get AI-generated guided visualizations tailored to your specific goals, whether it's peak performance, stress reduction, or mental preparation for important events",
     type: "image",
-    path: "/voice.png",
+    path: "/customize.png",
     alt: "Personalized Visualizations",
     svg: (
       <svg
@@ -40,7 +40,7 @@ const features = [
     description:
       "Choose from multiple AI voices or customize the perfect voice for your guided sessions. Adjust tone, pace, and background ambiance for the optimal experience",
     type: "image",
-    path: "/customize.png",
+    path: "/voice.png",
     alt: "AI Voice Customization",
     svg: (
       <svg

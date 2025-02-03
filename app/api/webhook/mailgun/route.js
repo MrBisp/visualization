@@ -3,6 +3,9 @@ import { sendEmail } from "@/libs/mailgun";
 import config from "@/config";
 import crypto from "crypto";
 
+// This tells Next.js this is a dynamic route
+export const dynamic = 'force-dynamic';
+
 // This route is used to receive emails from Mailgun and forward them to our customer support email.
 // See more: https://shipfa.st/docs/features/emails
 export async function POST(req) {

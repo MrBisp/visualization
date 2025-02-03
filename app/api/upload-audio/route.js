@@ -4,6 +4,9 @@ import { getServerSession } from "next-auth";
 import { authOptions } from "@/libs/next-auth";
 import { randomUUID } from 'crypto';
 
+// This tells Next.js this is a dynamic route
+export const dynamic = 'force-dynamic';
+
 const supabase = createClient(
     process.env.NEXT_PUBLIC_SUPABASE_URL,
     process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY
@@ -32,7 +35,7 @@ export async function POST(request) {
         const filePath = `visualizations/${session.user.id}/${randomUUID()}.${fileExt}`;
 
         // Upload file to storage
-        const { data: storageData, error: storageError } = await supabase
+        const { error: storageError } = await supabase
             .storage
             .from('visualization-audio')
             .upload(filePath, file, {
@@ -42,7 +45,7 @@ export async function POST(request) {
         if (storageError) throw storageError;
 
         // Store the file path in the database
-        const { data: audioData, error: audioError } = await supabase
+        const { error: audioError } = await supabase
             .from('visualization_audio')
             .insert([
                 {

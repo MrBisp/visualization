@@ -20,7 +20,7 @@ export async function POST(request) {
         }
 
         // First check if user exists in public.users
-        const { data: existingPublicUser, error: publicCheckError } = await supabase
+        const { data: existingPublicUser } = await supabase
             .from('users')
             .select('id')
             .eq('email', email)

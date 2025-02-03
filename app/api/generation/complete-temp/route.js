@@ -119,7 +119,7 @@ export async function POST(request) {
         const finalBuffer = Buffer.concat(audioChunks);
 
         // Upload the audio file to Supabase Storage
-        const { data: storageData, error: storageError } = await supabase
+        const { error: storageError } = await supabase
             .storage
             .from('visualization-audio')
             .upload(filePath, finalBuffer, {

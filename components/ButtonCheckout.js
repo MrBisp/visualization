@@ -1,7 +1,6 @@
 "use client";
 
 import { useState } from "react";
-import { toast } from "react-hot-toast";
 import apiClient from "@/libs/api";
 import config from "@/config";
 

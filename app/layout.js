@@ -5,13 +5,10 @@ import config from "@/config";
 import "./globals.css";
 import Head from "next/head";
 import 'leaflet/dist/leaflet.css';
-import dynamic from 'next/dynamic';
 import RootLayoutContent from "@/components/RootLayoutContent";
+import { Suspense } from 'react';
 
 const font = Inter({ subsets: ["latin"] });
-const MapNavBar = dynamic(() => import('@/components/MapNavBar'), {
-	ssr: false
-});
 
 export const viewport = {
 	// Will use the primary color of your theme to show a nice theme color in the URL bar of supported browsers
@@ -38,9 +35,15 @@ export default function RootLayout({ children }) {
 			</Head>
 			<body>
 				<ClientLayout>
-					<RootLayoutContent>
-						{children}
-					</RootLayoutContent>
+					<Suspense fallback={
+						<div className="min-h-screen flex items-center justify-center">
+							<div className="animate-spin rounded-full h-8 w-8 border-b-2 border-gray-900"></div>
+						</div>
+					}>
+						<RootLayoutContent>
+							{children}
+						</RootLayoutContent>
+					</Suspense>
 				</ClientLayout>
 			</body>
 		</html>

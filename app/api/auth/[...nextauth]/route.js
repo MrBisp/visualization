@@ -50,7 +50,7 @@ export const authOptions = {
         })
     ],
     callbacks: {
-        async jwt({ token, user, trigger, session }) {
+        async jwt({ token, user }) {
             if (user) {
                 // Initial sign in
                 token.id = user.id;

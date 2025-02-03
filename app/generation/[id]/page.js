@@ -1,16 +1,14 @@
 'use client';
 
-import { useEffect, useState } from 'react';
+import { useEffect, useState, useMemo } from 'react';
 import { useRouter } from 'next/navigation';
 import { useSession } from "next-auth/react";
 import { SECTION_TYPES } from '@/app/services/visualizationService';
 import { handleGeneration } from '@/components/GenerationService';
 import VisualizationProgress from '@/components/VisualizationProgress';
 import AudioSection from '@/components/AudioSection';
-import ButtonSignin from '@/components/ButtonSignin';
 import RegisterForm from '@/components/RegisterForm';
 import { toast } from 'react-hot-toast';
-import { completeTempVisualization } from '@/app/services/visualizationService';
 
 export default function GenerationPage({ params }) {
     const router = useRouter();
@@ -18,8 +16,7 @@ export default function GenerationPage({ params }) {
     const { data: session, update: updateSession } = useSession();
     const isDebugMode = id === 'debug';
 
-    const [isTesting, setIsTesting] = useState(false);
-    const [noAudio, setNoAudio] = useState(false);
+    const [noAudio] = useState(false);
     
     const [visualization, setVisualization] = useState(null);
     const [currentSection, setCurrentSection] = useState(null);
@@ -29,7 +26,7 @@ export default function GenerationPage({ params }) {
     const [isGeneratingAudio, setIsGeneratingAudio] = useState(false);
 
     // Section descriptions for the user
-    const sectionDescriptions = {
+    const sectionDescriptions = useMemo(() => ({
         [SECTION_TYPES.INTRODUCTION]: {
             pending: "Preparing to create your introduction...",
             processing: [
@@ -75,12 +72,34 @@ export default function GenerationPage({ params }) {
                 "Polishing the final experience..."
             ]
         }
-    };
+    }), []);
 
     useEffect(() => {
         let mounted = true;
 
         const loadAndStart = async () => {
+            // Define startGeneration inside the effect to avoid dependency issues
+            const startGeneration = async () => {
+                // Clear any stale generation flag
+                const generationKey = `generation_in_progress_${id}`;
+                if (localStorage.getItem(generationKey)) {
+                    console.log('Clearing stale generation flag');
+                    localStorage.removeItem(generationKey);
+                }
+
+                await handleGeneration({
+                    id,
+                    isDebugMode,
+                    noAudio,
+                    SECTION_TYPES,
+                    setCurrentSection,
+                    setProgress,
+                    setVisualization,
+                    setIsGeneratingAudio,
+                    setError
+                });
+            };
+
             if (isDebugMode) {
                 // In debug mode, create mock data
                 const mockVisualization = {
@@ -162,7 +181,7 @@ export default function GenerationPage({ params }) {
         return () => {
             mounted = false;
         };
-    }, [id, isDebugMode]);
+    }, [id, isDebugMode, noAudio]);
 
     // Add cleanup effect for generation flag
     useEffect(() => {
@@ -186,7 +205,7 @@ export default function GenerationPage({ params }) {
         }, 3000);
 
         return () => clearInterval(interval);
-    }, [currentSection, progress]);
+    }, [currentSection, progress, sectionDescriptions]);
 
     const getCurrentMessage = () => {
         if (!currentSection) return 'Getting everything ready... This process typically takes 3-4 minutes in total.';
@@ -208,191 +227,6 @@ export default function GenerationPage({ params }) {
             return `${currentSection.split('_').map(word => word.charAt(0).toUpperCase() + word.slice(1).toLowerCase()).join(' ')} completed!`;
         }
         return 'Processing...';
-    };
-
-    const startGeneration = async () => {
-        // Clear any stale generation flag
-        const generationKey = `generation_in_progress_${id}`;
-        if (localStorage.getItem(generationKey)) {
-            console.log('Clearing stale generation flag');
-            localStorage.removeItem(generationKey);
-        }
-
-        await handleGeneration({
-            id,
-            isDebugMode,
-            noAudio,
-            SECTION_TYPES,
-            setCurrentSection,
-            setProgress,
-            setVisualization,
-            setIsGeneratingAudio,
-            setError
-        });
-    };
-
-    const handleAudioGeneration = async () => {
-        if (!visualization || isGeneratingAudio) return;
-
-        // For temporary visualizations, we don't need to check existing audio
-        if (visualization.id.startsWith('temp-')) {
-            await handleTempAudioGeneration();
-            return;
-        }
-
-        // First check if we already have a valid audio URL in the visualization state
-        if (visualization.audio_url && visualization.audio_type === 'full') {
-            console.log('Already have valid audio URL in state, skipping generation');
-            return;
-        }
-
-        // Double check if audio exists in the database and storage
-        try {
-            console.log('Thoroughly checking audio status for visualization:', visualization.id);
-            
-            // First try the audio endpoint
-            const audioResponse = await fetch(`/api/visualization/${visualization.id}/audio`);
-            if (audioResponse.ok) {
-                const audioData = await audioResponse.json();
-                console.log('Audio status check response:', audioData);
-
-                if (audioData.audio_url) {
-                    console.log('Found existing audio, updating state');
-                    setVisualization(prev => ({
-                        ...prev,
-                        audio_url: audioData.audio_url,
-                        audio_type: 'full'
-                    }));
-                    return;
-                }
-            }
-
-            // If audio endpoint returns 404, check the main visualization endpoint as backup
-            const vizResponse = await fetch(`/api/visualization/${visualization.id}`);
-            if (vizResponse.ok) {
-                const vizData = await vizResponse.json();
-                console.log('Visualization check response:', vizData);
-
-                if (vizData.audio_url && vizData.audio_type === 'full') {
-                    console.log('Found existing audio in visualization data, updating state');
-                    setVisualization(prev => ({
-                        ...prev,
-                        audio_url: vizData.audio_url,
-                        audio_type: 'full'
-                    }));
-                    return;
-                }
-            }
-
-            // If we get here and have a 404, then we truly need to generate
-            if (audioResponse.status === 404) {
-                console.log('No existing audio found, checking for stale records before generation');
-                // Clean up any stale audio records first
-                await fetch(`/api/visualization/${visualization.id}/audio/cleanup`, {
-                    method: 'POST'
-                }).catch(err => console.error('Failed to cleanup stale audio records:', err));
-                
-                console.log('Proceeding with audio generation');
-                await handleFullAudioGeneration();
-                return;
-            }
-
-            throw new Error(`Failed to check visualization status: ${audioResponse.status}`);
-        } catch (error) {
-            console.error('Error checking audio status:', error);
-            toast.error('Failed to check audio status. Please try refreshing the page.');
-        }
-    };
-
-    const handleTempAudioGeneration = async () => {
-        const audioGenerationStartedKey = `audio_generation_started_${visualization.id}`;
-        if (localStorage.getItem(audioGenerationStartedKey)) {
-            console.log('Audio generation already started or completed, skipping');
-            return;
-        }
-
-        localStorage.setItem(audioGenerationStartedKey, 'true');
-        setIsGeneratingAudio(true);
-
-        try {
-            console.log('Starting temporary audio generation');
-            const result = await completeTempVisualization(
-                visualization.id,
-                visualization.text,
-                visualization.selected_voice || 'alloy'
-            );
-
-            if (!result.audio_url) {
-                throw new Error('No audio URL returned from server');
-            }
-
-            console.log('Temporary audio generation completed');
-            const audioGeneratedKey = `audio_generated_${visualization.id}`;
-            localStorage.setItem(audioGeneratedKey, 'true');
-            
-            setVisualization(prev => ({
-                ...prev,
-                audio_url: result.audio_url
-            }));
-
-            toast(
-                <div>
-                    Your audio will be available for 1 hour. 
-                    <br />
-                    <span className="font-semibold">Sign in to save it permanently!</span>
-                </div>, 
-                {
-                    duration: 6000,
-                    icon: '⏳'
-                }
-            );
-        } catch (error) {
-            console.error('Audio generation error:', error);
-            toast.error('Failed to generate audio. Please try again.');
-            localStorage.removeItem(audioGenerationStartedKey);
-        } finally {
-            setIsGeneratingAudio(false);
-        }
-    };
-
-    const handleFullAudioGeneration = async () => {
-        const audioGenerationStartedKey = `audio_generation_started_${visualization.id}`;
-        localStorage.setItem(audioGenerationStartedKey, 'true');
-        setIsGeneratingAudio(true);
-
-        try {
-            console.log('Starting full audio generation');
-            const response = await fetch('/api/generation/complete', {
-                method: 'POST',
-                headers: {
-                    'Content-Type': 'application/json',
-                },
-                body: JSON.stringify({ id: visualization.id }),
-            });
-
-            if (!response.ok) {
-                throw new Error(`Failed to generate audio: ${response.status}`);
-            }
-
-            const data = await response.json();
-            
-            if (!data.audio_url) {
-                throw new Error('No audio URL returned from server');
-            }
-
-            console.log('Full audio generation completed');
-            setVisualization(prev => ({
-                ...prev,
-                audio_url: data.audio_url,
-                audio_type: 'full'
-            }));
-        } catch (error) {
-            console.error('Audio generation error:', error);
-            toast.error('Failed to generate audio. Please try again.');
-            localStorage.removeItem(audioGenerationStartedKey);
-        } finally {
-            setIsGeneratingAudio(false);
-        }
     };
 
     // Handle successful registration

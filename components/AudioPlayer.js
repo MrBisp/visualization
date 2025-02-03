@@ -138,12 +138,6 @@ export default function AudioPlayer({ visualizationId, audioUrl: initialAudioUrl
         }
     };
 
-    const handleSeek = (e) => {
-        const time = e.target.value;
-        audioRef.current.currentTime = time;
-        setCurrentTime(time);
-    };
-
     const handlePlaybackRateChange = (e) => {
         if (!audioRef.current) return;
         

@@ -78,7 +78,7 @@ function splitTextIntoChunks(text, maxLength) {
     return chunks;
 }
 
-export async function GET(request) {
+export async function GET() {
     return NextResponse.json({ status: 'Route is working' });
 }
 
@@ -138,7 +138,7 @@ export async function POST(request) {
             const filePath = `visualizations/${session.user.id}/${fileName}`;
 
             // Upload the audio file to Supabase Storage
-            const { data: storageData, error: storageError } = await supabase
+            const { error: storageError } = await supabase
                 .storage
                 .from('visualization-audio')
                 .upload(filePath, combinedBuffer, {
@@ -254,7 +254,7 @@ export async function POST(request) {
         const filePath = `visualizations/${visualization.user_id}/${fileName}`;
 
         // Upload the audio file to Supabase Storage
-        const { data: storageData, error: storageError } = await supabase
+        const { error: storageError } = await supabase
             .storage
             .from('visualization-audio')
             .upload(filePath, combinedBuffer, {

@@ -37,7 +37,7 @@ const EmojiRain = ({ emoji, onComplete }) => {
         return () => {
             clearTimeout(timer);
         };
-    }, [emoji]);
+    }, [emoji, onComplete]);
 
     if (emojis.length === 0) return null;
 

@@ -1,9 +1,11 @@
 "use client";
 
 import React, { memo, useEffect, useRef, useState, useCallback, useMemo } from "react";
-import dynamic from 'next/dynamic';
 import { useReviews } from "@/hooks/useReviews";
 import { useSession } from "next-auth/react";
+import { MapContainer, TileLayer, Marker, Popup, useMap, useMapEvents } from 'react-leaflet';
+import { useRouter } from 'next/navigation';
+import { toast } from 'react-hot-toast';
 import ProfileImage from '@/components/ProfileImage';
 import ReactDOMServer from 'react-dom/server';
 import L from 'leaflet';
@@ -12,7 +14,6 @@ import ProfileListItem from "./ProfileListItem";
 import Link from "next/link";
 import EmojiRain from './EmojiRain';
 import { randomRestaurants } from "@/libs/mock-data";
-import { MapContainer, TileLayer, Marker, Popup, useMap, useMapEvents } from 'react-leaflet';
 
 // Utility functions moved outside the component
 const isValidLatLng = (position) => {
@@ -185,21 +186,22 @@ const MapEvents = ({ whenCreated, onMoveEnd, useRandom, defaultZoom, positionRef
     return null;
 };
 
-const Map = memo(({ onLocationSelect = null, onMoveEnd = null, showCenterMarker = false, whenCreated = null, defaultZoom = 15, useRandom = false }) => {
+const Map = memo(({ onMoveEnd = null, showCenterMarker = false, whenCreated = null, defaultZoom = 15 }) => {
     const positionRef = useRef(getInitialPosition());
     const { data: session, status } = useSession();
     const { reviews: friendReviews, isLoading } = useReviews();
+    const router = useRouter();
 
-    const [activeEmoji, setActiveEmoji] = useState(null);
-
-    const reviews = useMemo(() => {
-        if (useRandom || status !== 'authenticated') {
+    const displayedReviews = useMemo(() => {
+        if (status !== 'authenticated') {
             return randomRestaurants;
         }
         return friendReviews;
-    }, [status, friendReviews, useRandom]);
+    }, [status, friendReviews]);
 
     const showLoading = status === 'authenticated' && isLoading;
+
+    const [activeEmoji, setActiveEmoji] = useState(null);
 
     const handleEmojiClick = useCallback((emoji) => {
         setActiveEmoji(emoji);
@@ -227,7 +229,7 @@ const Map = memo(({ onLocationSelect = null, onMoveEnd = null, showCenterMarker 
                     url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
                 />
 
-                {reviews.map((review) => (
+                {displayedReviews.map((review) => (
                     <ReviewMarker
                         key={review.id}
                         review={review}
@@ -245,7 +247,6 @@ const Map = memo(({ onLocationSelect = null, onMoveEnd = null, showCenterMarker 
                 <MapEvents
                     whenCreated={whenCreated}
                     onMoveEnd={onMoveEnd}
-                    useRandom={useRandom}
                     defaultZoom={defaultZoom}
                     positionRef={positionRef}
                 />

@@ -2,8 +2,7 @@
 import { useState, useEffect } from 'react';
 import { getVoicesList, getOpenAIVoiceId } from '../constants/voices';
 import { useRouter } from 'next/navigation';
-import { initializeVisualization, generateSection, SECTION_TYPES } from '../services/visualizationService';
-import { updateVisualizationStatus } from '../services/visualizationService';
+import { initializeVisualization, SECTION_TYPES } from '../services/visualizationService';
 import { useSession } from 'next-auth/react';
 import { toast } from 'react-hot-toast';
 
@@ -13,9 +12,7 @@ const GettingStarted = () => {
     const [step, setStep] = useState(1);
     const [selectedVoice, setSelectedVoice] = useState('emma');
     const [generationStep, setGenerationStep] = useState(0);
-    const [generationId, setGenerationId] = useState(null);
-    const [environmentText, setEnvironmentText] = useState('');
-    const { data: session, update: updateSession } = useSession();
+    const { data: session } = useSession();
 
     const preSelects = [
         {
@@ -73,10 +70,6 @@ const GettingStarted = () => {
 
     const handlePreSelectClick = (description) => {
         setVisualizationText(description);
-    };
-
-    const handleEnvironmentSelect = (description) => {
-        setEnvironmentText(description);
     };
 
     const voices = getVoicesList();
@@ -247,44 +240,12 @@ const GettingStarted = () => {
         <>
             <div className="flex items-center gap-2 self-start mb-4">
                 <span className="badge badge-primary py-3 px-3 sm:py-4 sm:px-4">Step 2/3</span>
-                <span className="text-base sm:text-lg">Describe Your Environment</span>
-            </div>
-
-            <button 
-                className="btn btn-ghost btn-sm self-start mb-4"
-                onClick={() => setStep(1)}
-            >
-                ← Back
-            </button>
-
-            <h2 className="font-bold text-2xl sm:text-3xl mb-3 sm:mb-4">Where Will You Practice This Visualization?</h2>
-            <p className="text-base sm:text-lg mb-4 sm:mb-6 max-w-2xl">
-                The environment where you practice your visualization can greatly impact its effectiveness. 
-                Describe where you'll be when listening to this visualization.
-            </p>
-            
-            <div className="w-full max-w-2xl mb-8">
-                <textarea 
-                    className="textarea textarea-bordered w-full"
-                    placeholder="Describe your environment..."
-                    value={environmentText}
-                    onChange={(e) => setEnvironmentText(e.target.value)}
-                    style={{ fontSize: '1rem', minHeight: '10rem', lineHeight: '1.5' }}
-                />
-            </div>
-        </>
-    );
-
-    const renderStep3 = () => (
-        <>
-            <div className="flex items-center gap-2 self-start mb-4">
-                <span className="badge badge-primary py-3 px-3 sm:py-4 sm:px-4">Step 3/3</span>
                 <span className="text-base sm:text-lg">Choose Voice & Generate</span>
             </div>
 
             <button 
                 className="btn btn-ghost btn-sm self-start mb-4"
-                onClick={() => setStep(2)}
+                onClick={() => setStep(1)}
             >
                 ← Back
             </button>
@@ -343,18 +304,6 @@ const GettingStarted = () => {
                         >
                             Next
                         </button>
-                    ) : step === 2 ? (
-                        <button 
-                            className="btn btn-primary w-full sm:btn-wide"
-                            onClick={() => {
-                                if (environmentText.trim()) {
-                                    setVisualizationText(visualizationText + "\n\nEnvironment for practice:\n" + environmentText);
-                                }
-                                setStep(3);
-                            }}
-                        >
-                            Next
-                        </button>
                     ) : (
                         <div className="w-full flex justify-center sm:justify-end">
                             {renderGenerationButton()}
@@ -368,7 +317,7 @@ const GettingStarted = () => {
     return (
         <>
             <div className="max-w-7xl mx-auto bg-base-100 flex flex-col items-start justify-start gap-4 px-4 sm:px-8 pt-6 sm:pt-8 pb-32" style={{ backgroundColor: "transparent" }}>   
-                {step === 1 ? renderStep1() : step === 2 ? renderStep2() : renderStep3()}
+                {step === 1 ? renderStep1() : renderStep2()}
             </div>
             {renderBottomSection()}
         </>

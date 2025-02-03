@@ -1,4 +1,5 @@
 import { Status } from './Status';
+import PropTypes from 'prop-types';
 
 export default function VisualizationProgress({ 
     currentSection, 
@@ -48,4 +49,15 @@ export default function VisualizationProgress({
             </div>
         </div>
     );
-} 
+}
+
+VisualizationProgress.propTypes = {
+    currentSection: PropTypes.string,
+    progress: PropTypes.object.isRequired,
+    isGeneratingAudio: PropTypes.bool.isRequired,
+    getCurrentMessage: PropTypes.func.isRequired,
+    SECTION_TYPES: PropTypes.object.isRequired,
+    visualization: PropTypes.shape({
+        audio_url: PropTypes.string
+    })
+}; 

@@ -3,6 +3,9 @@ import { headers } from "next/headers";
 import Stripe from "stripe";
 import { supabase } from "@/libs/supabase";
 
+// This tells Next.js this is a dynamic route
+export const dynamic = 'force-dynamic';
+
 const stripe = new Stripe(process.env.STRIPE_SECRET_KEY);
 const webhookSecret = process.env.STRIPE_WEBHOOK_SECRET;
 
@@ -16,8 +19,6 @@ export async function POST(req) {
 
   const signature = headers().get("stripe-signature");
 
-  let data;
-  let eventType;
   let event;
 
   // verify Stripe event is legit
@@ -27,9 +28,6 @@ export async function POST(req) {
     console.error(`Webhook signature verification failed. ${err.message}`);
     return NextResponse.json({ error: err.message }, { status: 400 });
   }
-
-  data = event.data;
-  eventType = event.type;
 
   try {
     switch (event.type) {

@@ -1,10 +1,8 @@
 'use client';
 
 import { useState, useEffect } from 'react';
-import { useSession } from 'next-auth/react';
 import Link from 'next/link';
 import { toast } from 'react-hot-toast';
-import AudioPlayer from '@/components/AudioPlayer';
 
 function VisualizationCard({ visualization }) {
     const [isDeleting, setIsDeleting] = useState(false);
@@ -127,7 +125,6 @@ function VisualizationCard({ visualization }) {
 }
 
 export default function VisualizationsPage() {
-    const { data: session } = useSession();
     const [visualizations, setVisualizations] = useState([]);
     const [isLoading, setIsLoading] = useState(true);
     const [error, setError] = useState(null);

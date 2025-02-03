@@ -5,8 +5,6 @@ import { useRouter } from 'next/navigation';
 import { useSession } from "next-auth/react";
 import { toast } from 'react-hot-toast';
 import AudioPlayer from '@/components/AudioPlayer';
-import { completeTempVisualization } from '@/app/services/visualizationService';
-import { getOpenAIVoiceId } from '@/app/constants/voices';
 
 export default function VisualizationPage({ params }) {
     const router = useRouter();
@@ -16,7 +14,7 @@ export default function VisualizationPage({ params }) {
     const [isLoading, setIsLoading] = useState(true);
     const [isEditing, setIsEditing] = useState(false);
     const [newTitle, setNewTitle] = useState('');
-    const [isGeneratingAudio, setIsGeneratingAudio] = useState(false);
+    const [isGeneratingAudio] = useState(false);
     const { data: session } = useSession();
 
     useEffect(() => {

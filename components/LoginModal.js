@@ -1,10 +1,10 @@
 "use client";
 
-import { useState, useEffect } from "react";
 import { signIn } from "next-auth/react";
 import Modal from "@/components/Modal";
 import { useRouter, useSearchParams } from 'next/navigation';
 import Image from "next/image";
+import PropTypes from 'prop-types';
 
 const LoginModal = ({ isOpen = false, setIsOpen }) => {
     const router = useRouter();
@@ -90,6 +90,11 @@ const LoginModal = ({ isOpen = false, setIsOpen }) => {
             </div>
         </Modal>
     );
+};
+
+LoginModal.propTypes = {
+    isOpen: PropTypes.bool,
+    setIsOpen: PropTypes.func.isRequired
 };
 
 export default LoginModal;

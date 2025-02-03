@@ -306,41 +306,9 @@ async function generateSectionContent(visualization, sectionType) {
 
 // Content validation helper
 function validateContent(content) {
-  if (!content || typeof content !== 'string') {
-    console.error('Content validation failed: content is empty or not a string');
-    return false;
-  }
-
-  if (content.length < 50) {
-    console.error('Content validation failed: content is too short');
-    return false;
-  }
-
-  // Check for any problematic characters or patterns
-  const problematicPatterns = [
-    /^Here's/i,
-    /^As requested/i,
-    /^I'll create/i,
-    /^Here you go/i,
-    /```/,
-    /<[^>]+>/  // HTML tags
-  ];
-
-  for (const pattern of problematicPatterns) {
-    if (pattern.test(content)) {
-      console.error(`Content validation failed: found problematic pattern ${pattern}`);
-      return false;
-    }
-  }
-
+  if (!content || typeof content !== 'string') return false;
+  if (content.length < 50) return false;
   return true;
-}
-
-// Helper function to estimate duration based on word count
-function calculateEstimatedDuration(text) {
-  const WORDS_PER_MINUTE = 130; // Average speaking pace
-  const wordCount = text.split(/\s+/).length;
-  return Math.ceil(wordCount / WORDS_PER_MINUTE * 60); // Duration in seconds
 }
 
 export async function getVisualizationProgress(visualizationId) {
@@ -458,8 +426,8 @@ export async function completeVisualization(id) {
             throw new Error(errorData.error || 'Failed to generate audio');
         }
 
-        const data = await response.json();
-        
+        await response.json(); // Consume the response but don't store it
+
         // Get the audio URL through the server API
         const audioUrl = await getAudioUrl(id);
 

@@ -1,7 +1,7 @@
 import { NextResponse } from 'next/server';
 
 export async function POST(request) {
-    const { generationId } = await request.json();
+    await request.json(); // Still parse the request but don't destructure unused variables
     
     // Here you would process the generation
     // Fetch the generation data from your database

@@ -3,10 +3,10 @@
 import { useState } from "react";
 import { signIn } from "next-auth/react";
 import { toast } from "react-hot-toast";
-import apiClient from "@/libs/api";
 import { useRouter } from "next/navigation";
+import PropTypes from 'prop-types';
 
-export default function RegisterForm({ shouldRedirect = true, onSuccess }) {
+const RegisterForm = ({ shouldRedirect = true, onSuccess }) => {
     const router = useRouter();
     const [isLoading, setIsLoading] = useState(false);
     const [isSuccess, setIsSuccess] = useState(false);
@@ -15,12 +15,10 @@ export default function RegisterForm({ shouldRedirect = true, onSuccess }) {
         password: "",
         name: "",
     });
-    const [error, setError] = useState(null);
 
     const handleSubmit = async (e) => {
         e.preventDefault();
         setIsLoading(true);
-        setError(null);
 
         try {
             // Register the user
@@ -76,7 +74,6 @@ export default function RegisterForm({ shouldRedirect = true, onSuccess }) {
             }
         } catch (err) {
             console.error('Registration error:', err);
-            setError(err.message);
             toast.error(err.message);
         } finally {
             setIsLoading(false);
@@ -158,4 +155,11 @@ export default function RegisterForm({ shouldRedirect = true, onSuccess }) {
             </button>*/}
         </form>
     );
-}
+};
+
+RegisterForm.propTypes = {
+    shouldRedirect: PropTypes.bool,
+    onSuccess: PropTypes.func
+};
+
+export default RegisterForm;

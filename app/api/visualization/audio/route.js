@@ -1,6 +1,9 @@
 import { createClient } from '@supabase/supabase-js';
 import { NextResponse } from 'next/server';
 
+// This tells Next.js this is a dynamic route
+export const dynamic = 'force-dynamic';
+
 // Create Supabase client with service role key for admin access
 const supabase = createClient(
     process.env.NEXT_PUBLIC_SUPABASE_URL,
@@ -13,7 +16,7 @@ const supabase = createClient(
     }
 );
 
-export async function GET(request, { params }) {
+export async function GET(request) {
     try {
         const { searchParams } = new URL(request.url);
         const id = searchParams.get('id');

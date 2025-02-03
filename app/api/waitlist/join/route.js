@@ -1,6 +1,9 @@
 import { NextResponse } from "next/server";
 import { createClient } from "@/utils/supabase/server";
 
+// This tells Next.js this is a dynamic route
+export const dynamic = 'force-dynamic';
+
 export async function POST(req) {
   try {
     const { email, metadata = {} } = await req.json();

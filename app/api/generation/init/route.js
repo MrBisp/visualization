@@ -1,7 +1,7 @@
 import { NextResponse } from 'next/server';
 
 export async function POST(request) {
-    const { text, voiceId } = await request.json();
+    await request.json(); // Still parse the request but don't destructure unused variables
     
     // Generate a unique ID for this generation
     const generationId = Date.now().toString();

@@ -9,10 +9,8 @@ export async function POST(req) {
 
   if (session) {
     try {
-      const { id } = session.user;
-
-      const user = null;
       const body = await req.json();
+      const user = null;
 
       if (!user?.customerId) {
         return NextResponse.json(

@@ -145,7 +145,7 @@ function LoginContent() {
 
                     <div className="text-center">
                         <p className="text-sm text-gray-600">
-                            Don't have an account?{' '}
+                            Don&apos;t have an account?{' '}
                             <button
                                 onClick={() => router.push('/auth/signup')}
                                 className="text-indigo-600 hover:text-indigo-500 font-medium"
