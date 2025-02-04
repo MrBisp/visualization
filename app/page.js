@@ -4,6 +4,7 @@ import FeaturesAccordion from "@/components/FeaturesAccordion";
 import FeaturesGrid from "@/components/FeaturesGrid";
 import Pricing from "@/components/Pricing";
 import FAQ from "@/components/FAQ";
+import Footer from "@/components/Footer";
 
 export default function Page() {
   return (
@@ -13,6 +14,7 @@ export default function Page() {
       <FeaturesGrid />
       <Pricing />
       <FAQ />
+      <Footer />
     </div>
   );
 }
