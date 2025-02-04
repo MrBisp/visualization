@@ -22,6 +22,16 @@ const Footer = () => {
 							>
 								Sprunked
 							</a>
+							{' '}and{' '}
+							<a 
+								href="https://aistage.net" 
+								target="_blank" 
+								rel="noopener noreferrer"
+								title="AIStage"
+								className="text-primary hover:text-primary-focus underline"
+							>
+								AIStage
+							</a>
 						</p>
 					</div>
 					<div className="text-sm text-gray-500">
