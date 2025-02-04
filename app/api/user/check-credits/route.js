@@ -3,6 +3,8 @@ import { createClient } from '@supabase/supabase-js';
 import { getServerSession } from "next-auth";
 import { authOptions } from "@/libs/next-auth";
 
+export const dynamic = 'force-dynamic';
+
 // Create Supabase client
 const supabase = createClient(
     process.env.NEXT_PUBLIC_SUPABASE_URL,
