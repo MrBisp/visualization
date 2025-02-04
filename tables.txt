@@ -16,7 +16,8 @@ CREATE TABLE public.users (
   updated_at timestamp with time zone DEFAULT timezone('utc'::text, now()) NOT NULL,
   customer_id text,
   price_id text,
-  has_access boolean DEFAULT false
+  has_access boolean DEFAULT false,
+  credits integer NOT NULL DEFAULT 1
 );
 
 -- Now create tables

@@ -100,6 +100,42 @@ export async function POST(request) {
         }
         console.log('User session:', session.user.email);
 
+        // Check if this is a full generation (not a preview)
+        const isFullGeneration = text && voice;
+
+        // Only check credits for full generation
+        if (isFullGeneration) {
+            // Check user's credits
+            const { data: userData, error: userError } = await supabase
+                .from('users')
+                .select('credits')
+                .eq('id', session.user.id)
+                .single();
+
+            if (userError) {
+                console.error('Error fetching user credits:', userError);
+                return NextResponse.json({ error: "Failed to check credits" }, { status: 500 });
+            }
+
+            if (!userData || userData.credits < 1) {
+                return NextResponse.json({ error: "Insufficient credits" }, { status: 403 });
+            }
+
+            // Deduct a credit
+            const { error: updateError } = await supabase
+                .from('users')
+                .update({ 
+                    credits: userData.credits - 1,
+                    updated_at: new Date().toISOString()
+                })
+                .eq('id', session.user.id);
+
+            if (updateError) {
+                console.error('Error updating user credits:', updateError);
+                return NextResponse.json({ error: "Failed to update credits" }, { status: 500 });
+            }
+        }
+
         // If text and voice are provided, this is a conversion from preview to full version
         if (text && voice) {
             // Split text into chunks that respect the TTS character limit

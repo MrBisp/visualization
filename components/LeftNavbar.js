@@ -78,6 +78,12 @@ export default function LeftNavbar({ onLinkClick }) {
               <p className="text-xs text-base-content/70 truncate">
                 {session.user?.email}
               </p>
+              <div className="flex items-center gap-1 mt-1">
+                <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor" className="w-4 h-4 text-yellow-500">
+                  <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zM8.732 6.232a2.5 2.5 0 013.536 0 .75.75 0 101.06-1.06A4 4 0 006.5 8v.165c0 .364.034.728.1 1.085h-.35a.75.75 0 000 1.5h.737a5.25 5.25 0 01-.367 3.072l-.055.123a.75.75 0 00.848 1.037l1.272-.283a3.493 3.493 0 011.604.021 4.992 4.992 0 002.422 0l.97-.242a.75.75 0 00-.363-1.456l-.971.243a3.491 3.491 0 01-1.694 0 4.992 4.992 0 00-2.258-.038c.19-.811.227-1.651.111-2.477h.292a.75.75 0 000-1.5H8.824c-.059-.313-.09-.630-.09-.949v-.165z" clipRule="evenodd" />
+                </svg>
+                <span className="text-xs font-medium">{session.user?.credits || 0} credits</span>
+              </div>
             </div>
           </div>
           <button

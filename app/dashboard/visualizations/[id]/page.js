@@ -5,6 +5,9 @@ import { useRouter } from 'next/navigation';
 import { useSession } from "next-auth/react";
 import { toast } from 'react-hot-toast';
 import AudioPlayer from '@/components/AudioPlayer';
+import { completeTempVisualization } from '@/app/services/visualizationService';
+import { getOpenAIVoiceId } from '@/app/constants/voices';
+import Link from 'next/link';
 
 export default function VisualizationPage({ params }) {
     const router = useRouter();
@@ -14,7 +17,7 @@ export default function VisualizationPage({ params }) {
     const [isLoading, setIsLoading] = useState(true);
     const [isEditing, setIsEditing] = useState(false);
     const [newTitle, setNewTitle] = useState('');
-    const [isGeneratingAudio] = useState(false);
+    const [isGeneratingAudio, setIsGeneratingAudio] = useState(false);
     const { data: session } = useSession();
 
     useEffect(() => {
@@ -73,11 +76,6 @@ export default function VisualizationPage({ params }) {
     const generateAudio = async () => {
         if (!visualization || isGeneratingAudio) return;
         
-        // Redirect to pricing page
-        router.push('/#pricing');
-        return;
-
-        /* Original code commented out for future restoration
         setIsGeneratingAudio(true);
         try {
             // For temporary visualizations
@@ -96,6 +94,18 @@ export default function VisualizationPage({ params }) {
                     audio_type: 'temp'
                 }));
             } else {
+                // Pre-flight check to verify user credits
+                const creditCheckResponse = await fetch('/api/user/check-credits');
+                if (!creditCheckResponse.ok) {
+                    const errorData = await creditCheckResponse.json();
+                    if (creditCheckResponse.status === 403) {
+                        toast.error("You don't have enough credits. Please upgrade your plan.");
+                        router.push('/#pricing');
+                        return;
+                    }
+                    throw new Error(errorData.error || 'Failed to verify credits');
+                }
+
                 // For logged-in users
                 const response = await fetch('/api/generation/complete', {
                     method: 'POST',
@@ -104,11 +114,20 @@ export default function VisualizationPage({ params }) {
                     },
                     body: JSON.stringify({ 
                         id: visualization.id,
+                        text: visualization.description,
                         voice: getOpenAIVoiceId(visualization.selected_voice) || 'alloy'  // Convert to OpenAI voice ID
                     }),
                 });
 
-                if (!response.ok) throw new Error('Failed to generate audio');
+                if (!response.ok) {
+                    const data = await response.json();
+                    if (response.status === 403 && data.error === "Insufficient credits") {
+                        toast.error("You don't have enough credits. Please upgrade your plan.");
+                        router.push('/#pricing');
+                        return;
+                    }
+                    throw new Error(data.error || 'Failed to generate audio');
+                }
 
                 const data = await response.json();
                 
@@ -123,14 +142,19 @@ export default function VisualizationPage({ params }) {
                     audio_url: refreshedData.audio_url,
                     audio_type: 'full'  // Explicitly set to full after successful generation
                 }));
+
+                // Update session with new credit count
+                const { update } = await import("next-auth/react");
+                await update({
+                    credits: (session?.user?.credits || 1) - 1
+                });
             }
         } catch (error) {
             console.error('Audio generation error:', error);
-            toast.error('Failed to generate audio');
+            toast.error(error.message || 'Failed to generate audio');
         } finally {
             setIsGeneratingAudio(false);
         }
-        */
     };
 
     if (isLoading) {
@@ -275,12 +299,18 @@ export default function VisualizationPage({ params }) {
                                         'Generate Full Version'
                                     )}
                                 </button>
-                            ) : (
-                                !visualization.audio_url && (
+                            ) : !visualization.audio_url && (
+                                <>
+                                    <div className="flex items-center gap-1">
+                                        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor" className="w-4 h-4 text-yellow-500">
+                                            <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zM8.732 6.232a2.5 2.5 0 013.536 0 .75.75 0 101.06-1.06A4 4 0 006.5 8v.165c0 .364.034.728.1 1.085h-.35a.75.75 0 000 1.5h.737a5.25 5.25 0 01-.367 3.072l-.055.123a.75.75 0 00.848 1.037l1.272-.283a3.493 3.493 0 011.604.021 4.992 4.992 0 002.422 0l.97-.242a.75.75 0 00-.363-1.456l-.971.243a3.491 3.491 0 01-1.694 0 4.992 4.992 0 00-2.258-.038c.19-.811.227-1.651.111-2.477h.292a.75.75 0 000-1.5H8.824c-.059-.313-.09-.630-.09-.949v-.165z" clipRule="evenodd" />
+                                        </svg>
+                                        <span className="text-sm font-medium">{session?.user?.credits || 0} credits</span>
+                                    </div>
                                     <button
                                         onClick={generateAudio}
                                         className="btn btn-primary"
-                                        disabled={isGeneratingAudio}
+                                        disabled={isGeneratingAudio || (session?.user?.credits || 0) < 1}
                                     >
                                         {isGeneratingAudio ? (
                                             <>
@@ -291,7 +321,7 @@ export default function VisualizationPage({ params }) {
                                             'Generate Audio'
                                         )}
                                     </button>
-                                )
+                                </>
                             )}
                             {visualization.audio_url && !isGeneratingAudio && visualization.audio_type === 'full' && (
                                 <button
@@ -324,20 +354,29 @@ export default function VisualizationPage({ params }) {
                     ) : (
                         <div className="text-center py-8">
                             <p className="text-gray-600 mb-4">No audio generated yet</p>
-                            <button
-                                onClick={generateAudio}
-                                className="btn btn-primary"
-                                disabled={isGeneratingAudio}
-                            >
-                                {isGeneratingAudio ? (
-                                    <>
-                                        <span className="loading loading-spinner loading-sm"></span>
-                                        Generating Audio...
-                                    </>
-                                ) : (
-                                    'Generate Audio'
-                                )}
-                            </button>
+                            {(session?.user?.credits || 0) < 1 ? (
+                                <div className="space-y-4">
+                                    <p className="text-sm text-yellow-600">You need credits to generate audio</p>
+                                    <Link href="/#pricing" className="btn btn-primary">
+                                        Get Credits
+                                    </Link>
+                                </div>
+                            ) : (
+                                <button
+                                    onClick={generateAudio}
+                                    className="btn btn-primary"
+                                    disabled={isGeneratingAudio}
+                                >
+                                    {isGeneratingAudio ? (
+                                        <>
+                                            <span className="loading loading-spinner loading-sm"></span>
+                                            Generating Audio...
+                                        </>
+                                    ) : (
+                                        'Generate Audio'
+                                    )}
+                                </button>
+                            )}
                         </div>
                     )}
                 </div>

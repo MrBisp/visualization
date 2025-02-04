@@ -81,7 +81,8 @@ export async function POST(request) {
                 name,
                 password: hashedPassword,
                 created_at: new Date().toISOString(),
-                updated_at: new Date().toISOString()
+                updated_at: new Date().toISOString(),
+                credits: 1
             })
             .select()
             .single();

@@ -3,6 +3,7 @@
 import { useState, useEffect } from 'react';
 import Link from 'next/link';
 import { toast } from 'react-hot-toast';
+import { useSession } from "next-auth/react";
 
 function VisualizationCard({ visualization }) {
     const [isDeleting, setIsDeleting] = useState(false);
@@ -128,6 +129,7 @@ export default function VisualizationsPage() {
     const [visualizations, setVisualizations] = useState([]);
     const [isLoading, setIsLoading] = useState(true);
     const [error, setError] = useState(null);
+    const { data: session } = useSession();
 
     useEffect(() => {
         const fetchVisualizations = async () => {
@@ -175,7 +177,7 @@ export default function VisualizationsPage() {
             <div className="flex flex-col sm:flex-row sm:justify-between sm:items-center gap-4 mb-8">
                 <h1 className="text-2xl font-bold text-gray-900">My Visualizations</h1>
                 <Link 
-                    href="/#pricing" 
+                    href={(session?.user?.credits || 0) > 0 ? "/getting-started" : "/#pricing"}
                     className="btn btn-primary w-full sm:w-auto"
                 >
                     Create New Visualization
@@ -191,7 +193,7 @@ export default function VisualizationsPage() {
                         Create your first visualization to get started
                     </p>
                     <Link 
-                        href="/#pricing" 
+                        href={(session?.user?.credits || 0) > 0 ? "/getting-started" : "/#pricing"}
                         className="btn btn-primary"
                     >
                         Create Your First Visualization

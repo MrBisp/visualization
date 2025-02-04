@@ -33,7 +33,22 @@ export async function GET() {
 
         if (error) throw error;
 
-        return NextResponse.json(visualizations);
+        // Process visualizations to add has_audio property
+        const processedVisualizations = visualizations.map(visualization => {
+            // Check if there's any audio record with a storage path
+            const hasAudio = visualization.visualization_audio?.some(
+                audio => audio.storage_path && audio.audio_type === 'full'
+            );
+
+            // Remove the visualization_audio array and add has_audio flag
+            const { visualization_audio, ...rest } = visualization;
+            return {
+                ...rest,
+                has_audio: hasAudio
+            };
+        });
+
+        return NextResponse.json(processedVisualizations);
     } catch (error) {
         console.error('Error fetching visualizations:', error);
         return NextResponse.json(

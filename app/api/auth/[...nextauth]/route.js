@@ -44,30 +44,64 @@ export const authOptions = {
                     id: user.id,
                     email: user.email,
                     name: user.name,
-                    image: user.image
+                    image: user.image,
+                    credits: user.credits
                 };
             }
         })
     ],
     callbacks: {
-        async jwt({ token, user }) {
+        async jwt({ token, user, trigger, session }) {
             if (user) {
                 // Initial sign in
                 token.id = user.id;
                 token.email = user.email;
                 token.name = user.name;
+                token.credits = user.credits;
             }
-            // For subsequent requests, token already has the data
+
+            // Handle credit updates
+            if (trigger === 'update' && session?.credits !== undefined) {
+                token.credits = session.credits;
+            }
+
             return token;
         },
-        async session({ session, token }) {
+        async session({ session, token, trigger }) {
             // Send properties to the client
             session.user.id = token.id;
             session.user.email = token.email;
             session.user.name = token.name;
+
+            // Always fetch latest credit count from database
+            const { data: userData, error } = await supabase
+                .from('users')
+                .select('credits')
+                .eq('id', token.id)
+                .single();
+            
+            if (!error && userData) {
+                session.user.credits = userData.credits;
+            } else {
+                session.user.credits = token.credits; // Fallback to token if fetch fails
+            }
             
             console.log('Session in callback:', session); // Debug log
             return session;
+        }
+    },
+    events: {
+        async signIn({ user }) {
+            // Fetch latest user data on sign in
+            const { data: userData } = await supabase
+                .from('users')
+                .select('credits')
+                .eq('id', user.id)
+                .single();
+            
+            if (userData) {
+                user.credits = userData.credits;
+            }
         }
     },
     session: {
