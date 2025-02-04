@@ -7,7 +7,7 @@ import Head from "next/head";
 import 'leaflet/dist/leaflet.css';
 import RootLayoutContent from "@/components/RootLayoutContent";
 import { Suspense } from 'react';
-import { Analytics } from '@vercel/analytics/react';
+import { Analytics } from '@vercel/analytics/next';
 
 const font = Inter({ subsets: ["latin"] });
 
